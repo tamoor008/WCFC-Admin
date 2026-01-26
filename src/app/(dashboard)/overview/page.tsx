@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Loader2
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/lib/api";
 
@@ -18,18 +19,37 @@ export default function OverviewPage() {
   const [statsData, setStatsData] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setError(null);
         const [statsRes, ordersRes] = await Promise.all([
           adminService.getStats(),
           adminService.getOrders()
         ]);
         setStatsData(statsRes.data.stats);
         setRecentOrders(ordersRes.data.slice(0, 5));
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
+      } catch (err: any) {
+        console.error("Failed to fetch dashboard data", err);
+        if (err?.isAuthError || err?.response?.status === 401) {
+          const errorMsg = 'Authentication required. Please log in.';
+          setError(errorMsg);
+          toast.error(errorMsg);
+        } else {
+          const errorMsg = 'Failed to load dashboard data. Please check your connection.';
+          setError(errorMsg);
+          toast.error(err?.response?.data?.error || errorMsg);
+        }
+        // Set default values to prevent crashes
+        setStatsData({
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalProducts: 0,
+          statusCounts: { pending: 0 }
+        });
+        setRecentOrders([]);
       } finally {
         setLoading(false);
       }
@@ -41,6 +61,23 @@ export default function OverviewPage() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">Overview of your e-commerce platform</p>
+        </div>
+        <div className="border border-border rounded-lg p-6 bg-card">
+          <p className="text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Note: Admin authentication is not yet configured. The dashboard will show data once authentication is set up.
+          </p>
+        </div>
       </div>
     );
   }

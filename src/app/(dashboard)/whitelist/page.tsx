@@ -10,13 +10,14 @@ export default function WhitelistPage() {
     const [emails, setEmails] = useState<{ _id: string; email: string; createdAt: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [addEmail, setAddEmail] = useState("");
+    const [role, setRole] = useState<'user' | 'driver'>('user');
     const [adding, setAdding] = useState(false);
     const [removing, setRemoving] = useState<string | null>(null);
 
     const fetchWhitelist = async () => {
         try {
             setLoading(true);
-            const res = await adminService.getWhitelist();
+            const res = await adminService.getWhitelist(role);
             setEmails(res.data);
         } catch (e) {
             console.error("Failed to fetch whitelist:", e);
@@ -28,7 +29,7 @@ export default function WhitelistPage() {
 
     useEffect(() => {
         fetchWhitelist();
-    }, []);
+    }, [role]);
 
     const handleAdd = async () => {
         const email = addEmail.trim().toLowerCase();
@@ -43,7 +44,7 @@ export default function WhitelistPage() {
         }
         try {
             setAdding(true);
-            await adminService.addWhitelist(email);
+            await adminService.addWhitelist(email, role);
             setAddEmail("");
             toast.success("Email added to whitelist");
             fetchWhitelist();
@@ -72,8 +73,32 @@ export default function WhitelistPage() {
             <div>
                 <h2 className="text-3xl font-bold tracking-tight text-foreground">Whitelist</h2>
                 <p className="text-muted-foreground mt-1">
-                    Invite-only signup. Whitelisted emails can sign up without a referral code.
+                    Manage invite-only access for customers and drivers.
                 </p>
+                <div className="flex space-x-4 mt-4 border-b">
+                    <button
+                        onClick={() => setRole('user')}
+                        className={cn(
+                            "pb-2 text-sm font-medium transition-colors border-b-2",
+                            role === 'user'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Customers
+                    </button>
+                    <button
+                        onClick={() => setRole('driver')}
+                        className={cn(
+                            "pb-2 text-sm font-medium transition-colors border-b-2",
+                            role === 'driver'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Drivers
+                    </button>
+                </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">

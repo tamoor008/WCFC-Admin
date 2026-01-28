@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.154:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -50,10 +50,16 @@ export const adminService = {
     getStats: (params?: any) => api.get('/admin/stats', { params }),
     getOrders: (params?: any) => api.get('/admin/orders', { params }),
     updateOrderStatus: (id: string, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
+    assignDriver: (id: string, driverId: string) => api.put(`/admin/orders/${id}/assign`, { driverId }),
     // Customers
     getCustomers: (params?: any) => api.get('/admin/customers', { params }),
     getCustomer: (id: string) => api.get(`/admin/customers/${id}`),
     blockCustomer: (id: string, isBlocked: boolean) => api.patch(`/admin/customers/${id}/block`, { isBlocked }),
+    createCustomer: (data: { name: string; email: string; password?: string; phone?: string }) => api.post('/admin/customers', data),
+    uploadImage: (formData: FormData) => api.post('/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    getDrivers: () => api.get('/admin/users?role=driver'), // Assuming /admin/users supports role filter or we create a new endpoint
     // Products
     getProducts: (params?: any) => api.get('/products', { params }),
     getProduct: (id: string) => api.get(`/products/${id}`),
@@ -69,14 +75,20 @@ export const adminService = {
     // Notifications
     sendNotification: (data: { title: string; body: string; target: string }) => api.post('/notifications/send', data),
     // Whitelist (invite-only signup)
-    getWhitelist: () => api.get('/admin/whitelist'),
-    addWhitelist: (email: string | string[]) =>
+    getWhitelist: (role: 'user' | 'driver' = 'user') => api.get('/admin/whitelist', { params: { role } }),
+    addWhitelist: (email: string | string[], role: 'user' | 'driver' = 'user') =>
         Array.isArray(email)
-            ? api.post('/admin/whitelist', { emails: email })
-            : api.post('/admin/whitelist', { email }),
+            ? api.post('/admin/whitelist', { emails: email, role })
+            : api.post('/admin/whitelist', { email, role }),
     removeWhitelist: (email: string) => api.delete(`/admin/whitelist/${encodeURIComponent(email)}`),
     logout: () => api.post('/auth/logout'),
+    getProfile: () => api.get('/auth/me'),
     updateProfile: (data: { name?: string }) => api.patch('/auth/me', data),
+    getPlatformSettings: () => api.get('/admin/settings'),
+    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string }) => api.put('/admin/settings', data),
+    // Config
+    getAppConfig: () => api.get('/config'),
+    updateAppConfig: (key: string, value: any) => api.post('/config', { key, value }),
 };
 
 export default api;

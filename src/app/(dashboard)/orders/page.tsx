@@ -73,8 +73,86 @@ export default function OrdersPage() {
         }
     };
 
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [assignOrderId, setAssignOrderId] = useState<string | null>(null);
+    const [drivers, setDrivers] = useState<{ _id: string, name: string, email: string }[]>([]);
+    const [fetchingDrivers, setFetchingDrivers] = useState(false);
+    const [assigning, setAssigning] = useState(false);
+
+    useEffect(() => {
+        if (assignOrderId) {
+            const fetchDrivers = async () => {
+                setFetchingDrivers(true);
+                try {
+                    // Fetch drivers
+                    const res = await adminService.getDrivers();
+                    // Assuming API returns array of users or { users: [] }
+                    setDrivers(Array.isArray(res.data) ? res.data : res.data.users || []);
+                } catch (e) {
+                    console.error("Failed to fetch drivers", e);
+                    toast.error("Failed to load drivers");
+                } finally {
+                    setFetchingDrivers(false);
+                }
+            };
+            fetchDrivers();
+        }
+    }, [assignOrderId]);
+
+    const handleAssignDriver = async (orderId: string, driverId: string) => {
+        try {
+            setAssigning(true);
+            await adminService.assignDriver(orderId, driverId);
+            toast.success("Driver assigned successfully");
+            setAssignOrderId(null);
+            // Refresh orders
+            const response = await adminService.getOrders({ page, limit: 10, search });
+            setOrders(response.data.orders || []);
+        } catch (e: any) {
+            toast.error(e?.response?.data?.error || "Failed to assign driver");
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {assignOrderId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-card w-full max-w-md rounded-xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 border-b border-border flex justify-between items-center bg-muted/40">
+                            <h3 className="font-semibold text-lg">Assign Driver</h3>
+                            <button onClick={() => setAssignOrderId(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+                        </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                            {fetchingDrivers ? (
+                                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                            ) : drivers.length === 0 ? (
+                                <p className="text-center text-muted-foreground p-4">No drivers found.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {drivers.map(driver => (
+                                        <button
+                                            key={driver._id}
+                                            onClick={() => handleAssignDriver(assignOrderId, driver._id)}
+                                            disabled={assigning}
+                                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted/50 transition-colors flex items-center justify-between group"
+                                        >
+                                            <div>
+                                                <p className="font-medium text-sm">{driver.name || 'Unknown Driver'}</p>
+                                                <p className="text-xs text-muted-foreground">{driver.email}</p>
+                                            </div>
+                                            {assigning && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                            {!assigning && <span className="opacity-0 group-hover:opacity-100 text-xs font-semibold text-primary">Assign</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">Orders</h2>
@@ -103,6 +181,7 @@ export default function OrdersPage() {
                                 <th className="px-6 py-4">Customer</th>
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Driver</th>
                                 <th className="px-6 py-4 text-right">Total</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -110,7 +189,7 @@ export default function OrdersPage() {
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="p-8 text-center">
+                                    <td colSpan={7} className="p-8 text-center">
                                         <div className="flex justify-center items-center space-x-2 text-muted-foreground">
                                             <Loader2 className="h-6 w-6 animate-spin" />
                                             <span>Loading orders...</span>
@@ -119,7 +198,7 @@ export default function OrdersPage() {
                                 </tr>
                             ) : orders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                                         No orders found.
                                     </td>
                                 </tr>
@@ -148,6 +227,21 @@ export default function OrdersPage() {
                                             )}>
                                                 {order.status}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {/* @ts-ignore */}
+                                            {order.assignedDriver ? (
+                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
+                                                    Assigned
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setAssignOrderId(order._id)}
+                                                    className="text-xs font-medium text-primary hover:underline"
+                                                >
+                                                    Assign Driver
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium">
                                             ${typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount}

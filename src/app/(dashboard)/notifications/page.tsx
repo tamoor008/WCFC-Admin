@@ -147,12 +147,9 @@ export default function NotificationsPage() {
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-xl z-10"></div>
 
                                 {/* Status Bar area */}
-                                <div className="h-10 w-full bg-background flex items-center justify-between px-6 text-[10px] font-bold">
+                                <div className="h-10 w-full bg-background flex items-center justify-between px-4 text-[10px] font-bold">
                                     <span>9:41</span>
-                                    <div className="flex space-x-1">
-                                        <div className="w-3 h-3 bg-foreground rounded-full opacity-20"></div>
-                                        <div className="w-3 h-3 bg-foreground rounded-full opacity-20"></div>
-                                    </div>
+
                                 </div>
 
                                 {/* Notification Card */}

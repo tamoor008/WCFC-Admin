@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { adminService } from "@/lib/api";
 import { SearchInput } from "@/components/ui/search-input";
 import { Pagination } from "@/components/ui/pagination";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -29,6 +29,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const page = Number(searchParams.get("page")) || 1;
     const search = searchParams.get("search") || "";
@@ -69,7 +70,9 @@ export default function ProductsPage() {
                         Manage your product catalog ({totalProducts} items)
                     </p>
                 </div>
-                <button className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
+                <button
+                    onClick={() => router.push('/products/new')}
+                    className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
                     <Plus className="h-5 w-5" />
                     <span>Add Product</span>
                 </button>

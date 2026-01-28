@@ -194,7 +194,9 @@ export default function CustomersPage() {
                         Manage your customer base ({totalCustomers} total)
                     </p>
                 </div>
-                <button className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
+                <button
+                    onClick={() => router.push('/customers/new')}
+                    className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
                     <UserPlus className="h-5 w-5" />
                     <span>Add Customer</span>
                 </button>

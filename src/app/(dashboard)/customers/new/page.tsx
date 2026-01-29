@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminService } from "@/lib/api";
-import { ArrowLeft, Loader2, Save, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Eye, EyeOff, Camera } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function NewCustomerPage() {
@@ -11,6 +11,10 @@ export default function NewCustomerPage() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // Image upload state
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -22,7 +26,28 @@ export default function NewCustomerPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
+
+        // Strict phone number sanitization
+        if (name === 'phone') {
+            // Only allow numbers and +
+            const sanitizedValue = value.replace(/[^0-9+]/g, '');
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -38,14 +63,45 @@ export default function NewCustomerPage() {
             return;
         }
 
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+
+        // US Phone validation
+        // Standard US Format: +11234567890 or 1234567890 (no spaces, dashes, parens allowed)
+        const phoneRegex = /^(\+?1)?[2-9]\d{9}$/;
+        if (formData.phone && !phoneRegex.test(formData.phone)) {
+            toast.error("Please enter a valid US phone number (e.g., 5551234567)");
+            return;
+        }
+
         setLoading(true);
 
         try {
+            let pictureUrl = "";
+
+            // Upload image if selected
+            if (imageFile) {
+                const imageFormData = new FormData();
+                imageFormData.append("image", imageFile);
+                try {
+                    const uploadRes = await adminService.uploadImage(imageFormData);
+                    pictureUrl = uploadRes.data.url;
+                } catch (uploadError) {
+                    console.error("Failed to upload image:", uploadError);
+                    toast.error("Failed to upload image, creating customer without image");
+                }
+            }
+
             await adminService.createCustomer({
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                password: formData.password
+                password: formData.password,
+                picture: pictureUrl || undefined
             });
             toast.success("Customer created successfully");
             router.push("/customers");
@@ -76,6 +132,36 @@ export default function NewCustomerPage() {
 
             <div className="bg-card border border-border rounded-xl shadow-sm p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Image Upload Section */}
+                    <div className="flex flex-col items-center justify-center mb-6">
+                        <div className="relative group cursor-pointer">
+                            <div
+                                onClick={() => document.getElementById('image-upload')?.click()}
+                                className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:border-primary transition-colors bg-muted/30"
+                            >
+                                {imagePreview ? (
+                                    <img
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <Camera className="h-8 w-8 text-muted-foreground" />
+                                )}
+                            </div>
+                            <input
+                                id="image-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageChange}
+                            />
+                            <div className="mt-2 text-center text-sm text-muted-foreground">
+                                {imagePreview ? "Click to change" : "Add Profile Photo"}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Full Name <span className="text-red-500">*</span>

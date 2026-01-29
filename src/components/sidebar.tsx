@@ -15,6 +15,8 @@ import {
     ListChecks
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { useState } from "react";
 
 const navigation = [
     { name: "Dashboard", href: "/overview", icon: LayoutDashboard },
@@ -29,11 +31,27 @@ const navigation = [
 ];
 
 interface SidebarProps {
-    onLogout?: () => void;
+    onLogout?: () => void | Promise<void>;
 }
 
 export function Sidebar({ onLogout }: SidebarProps) {
     const pathname = usePathname();
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const onConfirm = async () => {
+        try {
+            setLoading(true);
+            if (onLogout) {
+                await onLogout();
+            }
+        } catch (error) {
+            console.error("Logout failed", error);
+        } finally {
+            setLoading(false);
+            setOpen(false);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full w-64 bg-card border-r border-border fixed left-0 top-0 z-40">
@@ -66,13 +84,21 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
             <div className="p-4 border-t border-border">
                 <button
-                    onClick={onLogout}
+                    onClick={() => setOpen(true)}
                     className="flex w-full items-center px-4 py-3 text-sm font-medium rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
                 >
                     <LogOut className="mr-3 h-5 w-5" />
                     Logout
                 </button>
             </div>
+            <AlertModal
+                isOpen={open}
+                onClose={() => setOpen(false)}
+                onConfirm={onConfirm}
+                loading={loading}
+                title="Are you sure?"
+                description="This action cannot be undone."
+            />
         </div>
     );
 }

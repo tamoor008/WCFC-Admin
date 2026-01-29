@@ -55,7 +55,7 @@ export const adminService = {
     getCustomers: (params?: any) => api.get('/admin/customers', { params }),
     getCustomer: (id: string) => api.get(`/admin/customers/${id}`),
     blockCustomer: (id: string, isBlocked: boolean) => api.patch(`/admin/customers/${id}/block`, { isBlocked }),
-    createCustomer: (data: { name: string; email: string; password?: string; phone?: string }) => api.post('/admin/customers', data),
+    createCustomer: (data: { name: string; email: string; password?: string; phone?: string; picture?: string }) => api.post('/admin/customers', data),
     uploadImage: (formData: FormData) => api.post('/admin/upload-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),

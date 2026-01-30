@@ -12,7 +12,8 @@ import {
     LogOut,
     Tags,
     Bell,
-    ListChecks
+    ListChecks,
+    Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -25,6 +26,7 @@ const navigation = [
     { name: "Orders", href: "/orders", icon: ShoppingBag },
     { name: "Customers", href: "/customers", icon: Users },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    { name: "Reviews", href: "/reviews", icon: Star },
     { name: "Notifications", href: "/notifications", icon: Bell },
     { name: "Whitelist", href: "/whitelist", icon: ListChecks },
     { name: "Settings", href: "/settings", icon: Settings },
@@ -55,10 +57,15 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
     return (
         <div className="flex flex-col h-full w-64 bg-card border-r border-border fixed left-0 top-0 z-40">
-            <div className="flex items-center h-16 px-6 border-b border-border">
+            <div className="flex items-center justify-between h-16 px-6 border-b border-border">
                 <span className="text-xl font-bold text-primary">
                     WCFC Admin
                 </span>
+                {(process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_DANGER_ZONE === 'true') && (
+                    <span className="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-2 py-1 rounded-full border border-amber-200">
+                        Dev Mode
+                    </span>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">

@@ -30,7 +30,7 @@ export default function OverviewPage() {
           adminService.getOrders()
         ]);
         setStatsData(statsRes.data.stats);
-        setRecentOrders(ordersRes.data.slice(0, 5));
+        setRecentOrders((ordersRes.data.orders || []).slice(0, 5));
       } catch (err: any) {
         console.error("Failed to fetch dashboard data", err);
         if (err?.isAuthError || err?.response?.status === 401) {

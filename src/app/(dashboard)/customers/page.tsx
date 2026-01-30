@@ -40,6 +40,7 @@ interface Customer {
     referralCode?: string | null;
     name: string;
     email: string;
+    emailVerified?: boolean;
     phone?: string;
     createdAt: string;
     orderCount?: number;
@@ -123,13 +124,15 @@ export default function CustomersPage() {
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
+    const [status, setStatus] = useState(searchParams.get("status") || "all");
+
     useEffect(() => {
         const fetchCustomers = async () => {
             setLoading(true);
             try {
                 // Assuming the API returns { customers: [], totalPages: number, total: number }
                 // Adjust based on actual API response structure
-                const response = await adminService.getCustomers({ page, limit: 10, search });
+                const response = await adminService.getCustomers({ page, limit: 10, search, status });
 
                 // Handle different possible response structures safely
                 const data = response.data;
@@ -147,7 +150,19 @@ export default function CustomersPage() {
         };
 
         fetchCustomers();
-    }, [page, search]);
+    }, [page, search, status]);
+
+    const handleFilterChange = (newStatus: string) => {
+        setStatus(newStatus);
+        const params = new URLSearchParams(searchParams.toString());
+        if (newStatus !== 'all') {
+            params.set("status", newStatus);
+        } else {
+            params.delete("status");
+        }
+        params.set("page", "1"); // Reset to page 1
+        router.push(`?${params.toString()}`);
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent | Event) => {
@@ -205,8 +220,21 @@ export default function CustomersPage() {
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-secondary/10">
                     <SearchInput placeholder="Search by name, email or phone..." />
-                    <div className="flex items-center space-x-2">
-                        {/* Additional filters can go here */}
+                    <div className="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+                        {['all', 'active', 'inactive', 'blocked'].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => handleFilterChange(f)}
+                                className={cn(
+                                    "px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+                                    (status === f || (!status && f === 'all'))
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                )}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -250,7 +278,7 @@ export default function CustomersPage() {
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-3">
-                                                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 flex-shrink-0">
                                                     {customer.name
                                                         ? customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                                                         : 'U'}
@@ -279,6 +307,11 @@ export default function CustomersPage() {
                                                     <Mail className="h-3 w-3 mr-2" />
                                                     {customer.email}
                                                 </div>
+                                                {customer.emailVerified === false && (
+                                                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded w-fit">
+                                                        Email not verified
+                                                    </span>
+                                                )}
                                                 {customer.phone && (
                                                     <div className="flex items-center text-sm text-muted-foreground">
                                                         <Phone className="h-3 w-3 mr-2" />

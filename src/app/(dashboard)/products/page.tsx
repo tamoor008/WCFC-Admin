@@ -22,6 +22,7 @@ interface Product {
     _id: string;
     name: string;
     price: number;
+    originalPrice?: number;
     stock: number;
     category?: { name: string };
     image?: string;
@@ -137,7 +138,16 @@ export default function ProductsPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-sm">
-                                            ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
+                                            <div className="flex flex-col">
+                                                {product.originalPrice && product.originalPrice > product.price && (
+                                                    <span className="text-xs text-muted-foreground line-through">
+                                                        ${product.originalPrice.toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span className={product.originalPrice && product.originalPrice > product.price ? "text-red-500" : ""}>
+                                                    ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={cn(

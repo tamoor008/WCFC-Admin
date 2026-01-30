@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { User, Smartphone, Upload, X } from "lucide-react";
+import { User, Smartphone, Upload, X, AlertTriangle, Mail, Send } from "lucide-react";
 import { getAdminUser } from "@/lib/auth";
 import { adminService } from "@/lib/api";
 import toast from "react-hot-toast";
+import { validateBannerImage } from "@/lib/imageValidation";
 
 export default function SettingsPage() {
   const user = getAdminUser();
@@ -12,6 +13,9 @@ export default function SettingsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [appStoreLink, setAppStoreLink] = useState("");
   const [playStoreLink, setPlayStoreLink] = useState("");
+  const [driverAppStoreLink, setDriverAppStoreLink] = useState("");
+  const [driverPlayStoreLink, setDriverPlayStoreLink] = useState("");
+  const [autoAcceptReviews, setAutoAcceptReviews] = useState(false);
 
   // Home Config State
   const [homeBannerText, setHomeBannerText] = useState("");
@@ -20,8 +24,44 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'home'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'home' | 'reviews' | 'email'>('general');
   const [isEditingHomeConfig, setIsEditingHomeConfig] = useState(false);
+
+  // Email Broadcast State
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailTargetGroup, setEmailTargetGroup] = useState("all");
+  const [emailTestAddress, setEmailTestAddress] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Danger Zone State
+  const [showDangerModal, setShowDangerModal] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
+  const [emptying, setEmptying] = useState(false);
+
+  const handleEmptyDev = async () => {
+    if (confirmationText !== "EMPTY DEV") {
+      toast.error("Please type EMPTY DEV to confirm");
+      return;
+    }
+
+    setEmptying(true);
+    try {
+      const { data } = await adminService.emptyDevEnvironment();
+      if (data.success) {
+        toast.success(`Dev environment cleared! Deleted ${data.details.storageDeleted} files and ${data.details.collectionsCleared} collections.`);
+        setShowDangerModal(false);
+        setConfirmationText("");
+        // Reload settings to reflect changes if necessary
+        window.location.reload();
+      }
+    } catch (error: any) {
+      console.error("Failed to empty dev environment:", error);
+      toast.error(error?.response?.data?.error || "Failed to empty dev environment");
+    } finally {
+      setEmptying(false);
+    }
+  };
 
   useEffect(() => {
     // Initial state from localStorage for name
@@ -49,6 +89,9 @@ export default function SettingsPage() {
           setContactEmail(settings.supportEmail || "");
           setAppStoreLink(settings.appStoreLink || "");
           setPlayStoreLink(settings.playStoreLink || "");
+          setDriverAppStoreLink(settings.driverAppStoreLink || "");
+          setDriverPlayStoreLink(settings.driverPlayStoreLink || "");
+          setAutoAcceptReviews(settings.autoAcceptReviews || false);
         }
 
         // Fetch App Config
@@ -63,6 +106,15 @@ export default function SettingsPage() {
     };
     fetchProfile();
   }, [user?.name]);
+
+  const ensureProtocol = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    return trimmed;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +134,12 @@ export default function SettingsPage() {
       // Update Settings
       await adminService.updatePlatformSettings({
         supportEmail: contactEmail.trim(),
-        appStoreLink: appStoreLink.trim(),
-        playStoreLink: playStoreLink.trim()
+        appStoreLink: ensureProtocol(appStoreLink),
+        playStoreLink: ensureProtocol(playStoreLink),
+        driverAppStoreLink: ensureProtocol(driverAppStoreLink),
+        driverPlayStoreLink: ensureProtocol(driverPlayStoreLink),
+        // @ts-ignore
+        autoAcceptReviews
       });
 
       // Update App Config
@@ -112,6 +168,14 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate dimensions (must be 1000x500px)
+    const validation = await validateBannerImage(file);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid image dimensions");
+      e.target.value = "";
+      return;
+    }
+
     // reset input value so allowing same file upload again if needed
     e.target.value = "";
 
@@ -120,14 +184,14 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append("image", file);
 
-      const res = await adminService.uploadImage(formData);
+      const res = await adminService.uploadImage(formData, 'banner');
       if (res.data && res.data.url) {
         setHomeBannerImage(res.data.url);
-        toast.success("Image uploaded successfully");
+        toast.success("Banner image uploaded successfully");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload image", error);
-      toast.error("Failed to upload image");
+      toast.error(error?.response?.data?.error || "Failed to upload image");
     } finally {
       setUploadingImage(false);
     }
@@ -158,6 +222,24 @@ export default function SettingsPage() {
             }`}
         >
           Home Screen
+        </button>
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`pb-2 px-4 text-sm font-medium transition-colors relative ${activeTab === 'reviews'
+            ? 'text-primary border-b-2 border-primary'
+            : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          Reviews
+        </button>
+        <button
+          onClick={() => setActiveTab('email')}
+          className={`pb-2 px-4 text-sm font-medium transition-colors relative ${activeTab === 'email'
+            ? 'text-primary border-b-2 border-primary'
+            : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          Email
         </button>
       </div>
 
@@ -198,10 +280,10 @@ export default function SettingsPage() {
               <div className="grid gap-2">
                 <label className="text-sm font-medium">App Store Link (iOS)</label>
                 <input
-                  type="url"
+                  type="text"
                   value={appStoreLink}
                   onChange={(e) => setAppStoreLink(e.target.value)}
-                  placeholder="https://apps.apple.com/..."
+                  placeholder="apps.apple.com/..."
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
               </div>
@@ -209,12 +291,39 @@ export default function SettingsPage() {
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Play Store Link (Android)</label>
                 <input
-                  type="url"
+                  type="text"
                   value={playStoreLink}
                   onChange={(e) => setPlayStoreLink(e.target.value)}
-                  placeholder="https://play.google.com/store/apps/..."
+                  placeholder="play.google.com/store/apps/..."
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
+              </div>
+
+              <div className="border-t border-border pt-4 mt-4">
+                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Driver App Links</h4>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <label className="text-sm font-medium">Driver App Store Link (iOS)</label>
+                    <input
+                      type="text"
+                      value={driverAppStoreLink}
+                      onChange={(e) => setDriverAppStoreLink(e.target.value)}
+                      placeholder="apps.apple.com/..."
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="text-sm font-medium">Driver Play Store Link (Android)</label>
+                    <input
+                      type="text"
+                      value={driverPlayStoreLink}
+                      onChange={(e) => setDriverPlayStoreLink(e.target.value)}
+                      placeholder="play.google.com/store/apps/..."
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -232,9 +341,32 @@ export default function SettingsPage() {
                 {saving ? "Saving…" : "Save changes"}
               </button>
             </form>
+
+            {/* Danger Zone - Only show in development or if explicitly enabled */}
+            {(process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_DANGER_ZONE === 'true') && (
+              <div className="border-t border-red-200 mt-12 pt-8">
+                <div className="flex items-center gap-2 text-red-600 mb-4">
+                  <AlertTriangle className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">Danger Zone</h3>
+                </div>
+                <div className="bg-red-50 border border-red-100 rounded-xl p-6">
+                  <h4 className="font-medium text-red-900 mb-1">Empty Dev Environment</h4>
+                  <p className="text-sm text-red-700 mb-4">
+                    This will PERMANENTLY delete all data in the development database and all images in the DigitalOcean Spaces <span className="font-mono font-bold">dev/</span> folder. This cannot be undone.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowDangerModal(true)}
+                    className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Empty Development Environment
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'home' ? (
         <div className="flex-1 bg-card border border-border rounded-xl p-6 shadow-sm max-w-xl">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -396,6 +528,215 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      ) : activeTab === 'email' ? (
+        <div className="flex-1 bg-card border border-border rounded-xl p-6 shadow-sm max-w-xl">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Broadcast Email</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Send emails to all users or specific groups.
+            </p>
+
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Target Audience</label>
+                <select
+                  value={emailTargetGroup}
+                  onChange={(e) => setEmailTargetGroup(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="all">All Users</option>
+                  <option value="whitelisted">Whitelisted Users Only</option>
+                  <option value="referred">Referred Users Only</option>
+                  <option value="blocked">Blocked Users Only</option>
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Subject</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Email subject line..."
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Message</label>
+                <textarea
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  placeholder="Write your message here..."
+                  rows={6}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                />
+              </div>
+
+              <div className="border-t border-border pt-4 space-y-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Test Email (Optional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={emailTestAddress}
+                      onChange={(e) => setEmailTestAddress(e.target.value)}
+                      placeholder="test@example.com"
+                      className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                    <button
+                      type="button"
+                      disabled={sendingEmail || !emailSubject || !emailMessage || !emailTestAddress}
+                      onClick={async () => {
+                        setSendingEmail(true);
+                        try {
+                          const { data } = await adminService.sendEmail({
+                            subject: emailSubject,
+                            message: emailMessage,
+                            testEmail: emailTestAddress
+                          });
+                          toast.success(data.message || 'Test email sent!');
+                        } catch (error: any) {
+                          toast.error(error?.response?.data?.error || 'Failed to send test email');
+                        } finally {
+                          setSendingEmail(false);
+                        }
+                      }}
+                      className="px-4 py-2 bg-muted hover:bg-muted/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Send Test
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Send a test email to yourself before broadcasting.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  type="button"
+                  disabled={sendingEmail || !emailSubject || !emailMessage}
+                  onClick={async () => {
+                    if (!confirm(`Are you sure you want to send this email to ${emailTargetGroup === 'all' ? 'ALL users' : emailTargetGroup + ' users'}?`)) {
+                      return;
+                    }
+                    setSendingEmail(true);
+                    try {
+                      const { data } = await adminService.sendEmail({
+                        subject: emailSubject,
+                        message: emailMessage,
+                        targetGroup: emailTargetGroup
+                      });
+                      toast.success(data.message || 'Emails sent successfully!');
+                      // Clear form after successful send
+                      setEmailSubject("");
+                      setEmailMessage("");
+                    } catch (error: any) {
+                      toast.error(error?.response?.data?.error || 'Failed to send emails');
+                    } finally {
+                      setSendingEmail(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground hover:opacity-90 px-6 py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="h-4 w-4" />
+                  {sendingEmail ? 'Sending...' : 'Send to All'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 bg-card border border-border rounded-xl p-6 shadow-sm max-w-xl">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">Review Settings</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Configure how customer reviews are handled.
+            </p>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <h4 className="font-medium">Auto-Accept Reviews</h4>
+                <p className="text-sm text-muted-foreground">Automatically approve new reviews without moderation.</p>
+              </div>
+              <div className="flex items-center h-6">
+                <input
+                  type="checkbox"
+                  checked={autoAcceptReviews}
+                  onChange={(e) => setAutoAcceptReviews(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="bg-primary text-primary-foreground hover:opacity-90 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showDangerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-red-600 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold">Are you absolutely sure?</h3>
+            </div>
+
+            <p className="text-muted-foreground mb-6">
+              This action will wipe the <span className="font-bold text-foreground underline italic">development environment</span> including all MongoDB data and DigitalOcean Spaces files in the dev folder.
+            </p>
+
+            <div className="space-y-4 mb-8">
+              <label className="text-sm font-medium block">
+                Type <span className="font-mono font-bold text-red-600 select-all">EMPTY DEV</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={confirmationText}
+                onChange={(e) => setConfirmationText(e.target.value)}
+                placeholder="EMPTY DEV"
+                className="flex h-12 w-full rounded-lg border border-red-200 bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDangerModal(false);
+                  setConfirmationText("");
+                }}
+                disabled={emptying}
+                className="flex-1 px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEmptyDev}
+                disabled={emptying || confirmationText !== "EMPTY DEV"}
+                className="flex-1 px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {emptying ? "Emptying..." : "Empty Dev"}
+              </button>
+            </div>
           </div>
         </div>
       )}

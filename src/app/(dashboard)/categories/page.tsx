@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { adminService } from "@/lib/api";
+import { validateCategoryImage } from "@/lib/imageValidation";
 
 interface Category {
     _id?: string;
@@ -33,6 +34,7 @@ export default function CategoriesPage() {
     });
     const [saving, setSaving] = useState(false);
     const [iconPreview, setIconPreview] = useState<string>("");
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -90,33 +92,43 @@ export default function CategoriesPage() {
         if (!file) return;
 
         // Validate file type
-        if (!file.type.includes('svg') && !file.name.endsWith('.svg')) {
-            toast.error("Please select an SVG file");
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+            toast.error("Please select a PNG, JPG, or JPEG image");
             return;
         }
 
-        // Validate file size (max 500KB)
-        if (file.size > 500 * 1024) {
-            toast.error("SVG file size must be less than 500KB");
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error("Image size must be less than 2MB");
+            return;
+        }
+
+        // Validate dimensions (must be 300x300px)
+        const validation = await validateCategoryImage(file);
+        if (!validation.valid) {
+            toast.error(validation.error || "Invalid image dimensions");
             return;
         }
 
         try {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const svgContent = event.target?.result as string;
-                // Convert to base64 data URI for storage
-                const dataUri = `data:image/svg+xml;base64,${btoa(svgContent)}`;
-                setFormData({ ...formData, iconSvg: dataUri });
-                setIconPreview(dataUri);
-            };
-            reader.onerror = () => {
-                toast.error("Failed to read SVG file");
-            };
-            reader.readAsText(file);
-        } catch (error) {
-            console.error("Failed to read SVG file:", error);
-            toast.error("Failed to read SVG file");
+            setUploading(true);
+
+            // Upload to backend
+            const uploadData = new FormData();
+            uploadData.append('image', file);
+            const { data } = await adminService.uploadImage(uploadData, 'category');
+
+            if (data.url) {
+                setFormData({ ...formData, iconSvg: data.url });
+                setIconPreview(data.url);
+                toast.success("Image uploaded successfully");
+            }
+        } catch (error: any) {
+            console.error("Failed to upload image:", error);
+            toast.error(error?.response?.data?.error || "Failed to upload image");
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -210,15 +222,10 @@ export default function CategoriesPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         {category.iconSvg ? (
-                                            <div 
-                                                className="w-8 h-8 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:text-primary"
-                                                dangerouslySetInnerHTML={{ 
-                                                    __html: category.iconSvg.includes('data:image/svg+xml;base64,') 
-                                                        ? atob(category.iconSvg.split(',')[1]) 
-                                                        : category.iconSvg.includes('data:image/svg+xml,')
-                                                        ? decodeURIComponent(category.iconSvg.split(',')[1])
-                                                        : category.iconSvg 
-                                                }}
+                                            <img
+                                                src={category.iconSvg}
+                                                alt={category.name}
+                                                className="w-8 h-8 object-contain"
                                             />
                                         ) : category.icon ? (
                                             <span className="text-sm">{category.icon}</span>
@@ -284,15 +291,15 @@ export default function CategoriesPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">SVG Icon</label>
+                                <label className="block text-sm font-medium mb-2">Category Image</label>
                                 <input
                                     type="file"
-                                    accept=".svg,image/svg+xml"
+                                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                                     onChange={handleFileChange}
                                     className="w-full px-3 py-2 bg-secondary border border-border rounded-lg outline-none focus:ring-2 focus:ring-primary text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:opacity-90 cursor-pointer"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Upload an SVG icon file (max 500KB)
+                                    Upload a PNG, JPG, or JPEG image (max 2MB)
                                 </p>
                                 {iconPreview && (
                                     <div className="mt-3 p-3 bg-secondary rounded-lg border border-border">
@@ -305,15 +312,10 @@ export default function CategoriesPage() {
                                                 Remove
                                             </button>
                                         </div>
-                                        <div 
-                                            className="w-12 h-12 flex items-center justify-center border border-border rounded [&>svg]:w-full [&>svg]:h-full [&>svg]:text-primary"
-                                            dangerouslySetInnerHTML={{ 
-                                                __html: iconPreview.includes('data:image/svg+xml;base64,') 
-                                                    ? atob(iconPreview.split(',')[1]) 
-                                                    : iconPreview.includes('data:image/svg+xml,')
-                                                    ? decodeURIComponent(iconPreview.split(',')[1])
-                                                    : iconPreview 
-                                            }}
+                                        <img
+                                            src={iconPreview}
+                                            alt="Category icon preview"
+                                            className="w-12 h-12 object-contain border border-border rounded"
                                         />
                                     </div>
                                 )}

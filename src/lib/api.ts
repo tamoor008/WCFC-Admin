@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.154:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.57:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -52,11 +52,11 @@ export const adminService = {
     updateOrderStatus: (id: string, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
     assignDriver: (id: string, driverId: string) => api.put(`/admin/orders/${id}/assign`, { driverId }),
     // Customers
-    getCustomers: (params?: any) => api.get('/admin/customers', { params }),
+    getCustomers: (params?: { page?: number; limit?: number; search?: string; status?: string }) => api.get('/admin/customers', { params }),
     getCustomer: (id: string) => api.get(`/admin/customers/${id}`),
     blockCustomer: (id: string, isBlocked: boolean) => api.patch(`/admin/customers/${id}/block`, { isBlocked }),
     createCustomer: (data: { name: string; email: string; password?: string; phone?: string; picture?: string }) => api.post('/admin/customers', data),
-    uploadImage: (formData: FormData) => api.post('/admin/upload-image', formData, {
+    uploadImage: (formData: FormData, type?: 'product' | 'category' | 'customer' | 'banner') => api.post(`/admin/upload-image${type ? `?type=${type}` : ''}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
     getDrivers: () => api.get('/admin/users?role=driver'), // Assuming /admin/users supports role filter or we create a new endpoint
@@ -74,6 +74,7 @@ export const adminService = {
     deleteCategory: (id: string) => api.delete(`/categories/${id}`),
     // Notifications
     sendNotification: (data: { title: string; body: string; target: string }) => api.post('/notifications/send', data),
+    sendEmail: (data: { subject: string; message: string; targetGroup?: string; testEmail?: string }) => api.post('/admin/send-email', data),
     // Whitelist (invite-only signup)
     getWhitelist: (role: 'user' | 'driver' = 'user') => api.get('/admin/whitelist', { params: { role } }),
     addWhitelist: (email: string | string[], role: 'user' | 'driver' = 'user') =>
@@ -85,10 +86,15 @@ export const adminService = {
     getProfile: () => api.get('/auth/me'),
     updateProfile: (data: { name?: string }) => api.patch('/auth/me', data),
     getPlatformSettings: () => api.get('/admin/settings'),
-    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string }) => api.put('/admin/settings', data),
+    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string; driverAppStoreLink?: string; driverPlayStoreLink?: string; autoAcceptReviews?: boolean }) => api.put('/admin/settings', data),
     // Config
     getAppConfig: () => api.get('/config'),
     updateAppConfig: (key: string, value: any) => api.post('/config', { key, value }),
+    // Reviews
+    getReviews: () => api.get('/reviews/admin'),
+    updateReviewStatus: (id: string, status: 'approved' | 'rejected') => api.patch(`/reviews/admin/${id}/status`, { status }),
+    // Danger Zone
+    emptyDevEnvironment: () => api.post('/admin/danger/empty-dev'),
 };
 
 export default api;

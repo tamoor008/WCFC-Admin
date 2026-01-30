@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { adminService } from "@/lib/api";
 import { ArrowLeft, Loader2, Save, Eye, EyeOff, Camera } from "lucide-react";
 import toast from "react-hot-toast";
+import { validateCustomerImage } from "@/lib/imageValidation";
 
 export default function NewCustomerPage() {
     const router = useRouter();
@@ -15,6 +16,7 @@ export default function NewCustomerPage() {
     // Image upload state
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -38,16 +40,23 @@ export default function NewCustomerPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+
+        // Validate dimensions
+        const validation = await validateCustomerImage(file);
+        if (!validation.valid) {
+            toast.error(validation.error || "Invalid image dimensions");
+            return;
         }
+
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -85,14 +94,20 @@ export default function NewCustomerPage() {
 
             // Upload image if selected
             if (imageFile) {
+                setUploadingImage(true);
                 const imageFormData = new FormData();
                 imageFormData.append("image", imageFile);
                 try {
-                    const uploadRes = await adminService.uploadImage(imageFormData);
+                    const uploadRes = await adminService.uploadImage(imageFormData, 'customer');
                     pictureUrl = uploadRes.data.url;
-                } catch (uploadError) {
+                } catch (uploadError: any) {
                     console.error("Failed to upload image:", uploadError);
-                    toast.error("Failed to upload image, creating customer without image");
+                    toast.error(uploadError?.response?.data?.error || "Failed to upload image");
+                    setLoading(false);
+                    setUploadingImage(false);
+                    return;
+                } finally {
+                    setUploadingImage(false);
                 }
             }
 

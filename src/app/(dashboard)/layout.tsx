@@ -5,6 +5,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getAdminUser, logout } from "@/lib/auth";
 import { adminService } from "@/lib/api";
 import { useRouter, usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function DashboardLayout({
     children,
@@ -42,6 +43,7 @@ export default function DashboardLayout({
                             <h1 className="text-lg font-semibold">{getPageTitle(pathname)}</h1>
                         </div>
                         <div className="flex items-center space-x-4">
+                            <ThemeToggle />
                             <div className="text-sm text-muted-foreground">
                                 {user?.name || user?.email}
                             </div>

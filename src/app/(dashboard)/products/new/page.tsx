@@ -17,6 +17,7 @@ export default function NewProductPage() {
         name: "",
         description: "",
         price: "",
+        originalPrice: "",
         stock: "",
         category: "",
         images: [] as string[],
@@ -49,12 +50,20 @@ export default function NewProductPage() {
     const handleVariantImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+
+            const isSquare = await validateImageAspectRatio(file);
+            if (!isSquare) {
+                toast.error(`Variant image must be square (1:1 aspect ratio).`);
+                e.target.value = "";
+                return;
+            }
+
             const uploadData = new FormData();
             uploadData.append('image', file);
 
             try {
                 // @ts-ignore
-                const { data } = await adminService.uploadImage(uploadData);
+                const { data } = await adminService.uploadImage(uploadData, 'product');
                 if (data.url) {
                     updateVariant(index, 'image', data.url);
                     toast.success("Variant image uploaded");
@@ -87,6 +96,20 @@ export default function NewProductPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const validateImageAspectRatio = (file: File): Promise<boolean> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const ratio = img.width / img.height;
+                // Allow 5% tolerance (0.95 to 1.05)
+                const isValid = ratio >= 0.95 && ratio <= 1.05;
+                resolve(isValid);
+            };
+            img.onerror = () => resolve(true); // Fail open if can't load
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files);
@@ -94,6 +117,16 @@ export default function NewProductPage() {
             if (formData.images.length + files.length > 5) {
                 toast.error("You can only upload up to 5 images per product");
                 return;
+            }
+
+            // Validate aspect ratios
+            for (const file of files) {
+                const isSquare = await validateImageAspectRatio(file);
+                if (!isSquare) {
+                    toast.error(`Image ${file.name} is not square (1:1). Please upload 1:1 images.`);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    return;
+                }
             }
 
             setIsUploading(true);
@@ -104,7 +137,7 @@ export default function NewProductPage() {
                     const uploadData = new FormData();
                     uploadData.append('image', file);
                     // @ts-ignore - API method added recently
-                    const { data } = await adminService.uploadImage(uploadData);
+                    const { data } = await adminService.uploadImage(uploadData, 'product');
                     if (data.url) {
                         newImageUrls.push(data.url);
                     }
@@ -142,6 +175,7 @@ export default function NewProductPage() {
             const productData = {
                 ...formData,
                 price: parseFloat(formData.price),
+                originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
                 stock: parseInt(formData.stock),
                 image: formData.images.length > 0 ? formData.images[0] : "",
                 images: formData.images,
@@ -232,6 +266,22 @@ export default function NewProductPage() {
                                 min="0"
                                 step="0.01"
                                 value={formData.price}
+                                onChange={handleChange}
+                                placeholder="0.00"
+                                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Original Price ($) <span className="text-muted-foreground text-xs font-normal">(Optional)</span>
+                            </label>
+                            <input
+                                type="number"
+                                name="originalPrice"
+                                min="0"
+                                step="0.01"
+                                value={formData.originalPrice}
                                 onChange={handleChange}
                                 placeholder="0.00"
                                 className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -332,7 +382,7 @@ export default function NewProductPage() {
                             onChange={handleFileSelect}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Upload high-quality images. First image will be the main one.
+                            Upload 1:1 square aspect ratio images for best results. First image will be the main one.
                         </p>
                     </div>
 

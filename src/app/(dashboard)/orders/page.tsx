@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { adminService } from "@/lib/api";
 import { SearchInput } from "@/components/ui/search-input";
 import { Pagination } from "@/components/ui/pagination";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
 interface Order {
@@ -28,9 +28,11 @@ interface Order {
 }
 
 export default function OrdersPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const page = Number(searchParams.get("page")) || 1;
     const search = searchParams.get("search") || "";
+    const status = searchParams.get("status");
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export default function OrdersPage() {
         const fetchOrders = async () => {
             setLoading(true);
             try {
-                const response = await adminService.getOrders({ page, limit: 10, search });
+                const response = await adminService.getOrders({ page, limit: 10, search, status });
                 const data = response.data;
                 const ordersList = data.orders || [];
                 setOrders(ordersList);
@@ -56,7 +58,7 @@ export default function OrdersPage() {
         };
 
         fetchOrders();
-    }, [page, search]);
+    }, [page, search, status]);
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -163,13 +165,33 @@ export default function OrdersPage() {
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-secondary/10">
+                <div className="p-4 border-b border-border flex flex-col gap-4 bg-secondary/10">
                     <SearchInput placeholder="Search orders..." />
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col gap-2 w-full overflow-x-auto">
                         {/* Filter Buttons */}
-                        <button className="px-3 py-2 bg-background border border-border rounded-md text-sm font-medium hover:bg-muted transition-colors">
-                            Filter Status
-                        </button>
+                        <div className="flex gap-2 min-w-max pb-2">
+                            {['all', 'pending', 'processing', 'dispatched', 'delivered', 'cancelled'].map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => {
+                                        const params = new URLSearchParams(searchParams.toString());
+                                        if (f !== 'all') {
+                                            params.set("status", f);
+                                        } else {
+                                            params.delete("status");
+                                        }
+                                        params.set("page", "1"); // Reset to page 1
+                                        router.push(`?${params.toString()}`);
+                                    }}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${(status === f || (!status && f === 'all'))
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                        }`}
+                                >
+                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

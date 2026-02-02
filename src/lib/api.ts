@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.57:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.124:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -50,7 +50,7 @@ export const adminService = {
     getStats: (params?: any) => api.get('/admin/stats', { params }),
     getOrders: (params?: any) => api.get('/admin/orders', { params }),
     updateOrderStatus: (id: string, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
-    assignDriver: (id: string, driverId: string) => api.put(`/admin/orders/${id}/assign`, { driverId }),
+    assignDriver: (id: string, driverId: string) => api.patch(`/admin/orders/${id}/assign`, { driverId }),
     // Customers
     getCustomers: (params?: { page?: number; limit?: number; search?: string; status?: string }) => api.get('/admin/customers', { params }),
     getCustomer: (id: string) => api.get(`/admin/customers/${id}`),
@@ -59,7 +59,8 @@ export const adminService = {
     uploadImage: (formData: FormData, type?: 'product' | 'category' | 'customer' | 'banner') => api.post(`/admin/upload-image${type ? `?type=${type}` : ''}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
-    getDrivers: () => api.get('/admin/users?role=driver'), // Assuming /admin/users supports role filter or we create a new endpoint
+    getDrivers: () => api.get('/drivers'),
+    getDriver: (id: string) => api.get(`/drivers/${id}`),
     // Products
     getProducts: (params?: any) => api.get('/products', { params }),
     getProduct: (id: string) => api.get(`/products/${id}`),

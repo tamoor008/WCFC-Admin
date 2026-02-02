@@ -69,11 +69,11 @@ export const validateCategoryImage = async (file: File): Promise<ValidationResul
     try {
         const { width, height } = await getImageDimensions(file);
 
-        // Check exact dimensions
-        if (width !== 300 || height !== 300) {
+        // Check if square
+        if (width !== height) {
             return {
                 valid: false,
-                error: `Category image must be exactly 300x300px (got ${width}x${height}px)`,
+                error: `Category image must be square (1:1 aspect ratio)`,
                 dimensions: { width, height }
             };
         }

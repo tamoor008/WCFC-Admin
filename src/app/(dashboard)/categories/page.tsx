@@ -13,6 +13,7 @@ import {
 import toast from "react-hot-toast";
 import { adminService } from "@/lib/api";
 import { validateCategoryImage } from "@/lib/imageValidation";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 interface Category {
     _id?: string;
@@ -35,6 +36,8 @@ export default function CategoriesPage() {
     const [saving, setSaving] = useState(false);
     const [iconPreview, setIconPreview] = useState<string>("");
     const [uploading, setUploading] = useState(false);
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchCategories();
@@ -75,15 +78,25 @@ export default function CategoriesPage() {
         setShowModal(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this category?")) return;
+    const handleDeleteClick = (id: string) => {
+        setDeleteId(id);
+        setAlertOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteId) return;
         try {
-            await adminService.deleteCategory(id);
+            setLoading(true);
+            await adminService.deleteCategory(deleteId);
             toast.success("Category deleted successfully");
             fetchCategories();
         } catch (error: any) {
             console.error("Failed to delete category", error);
             toast.error(error?.response?.data?.error || "Failed to delete category");
+        } finally {
+            setLoading(false);
+            setAlertOpen(false);
+            setDeleteId(null);
         }
     };
 
@@ -243,7 +256,7 @@ export default function CategoriesPage() {
                                                 <Edit className="h-4 w-4" />
                                             </button>
                                             <button
-                                                onClick={() => category._id && handleDelete(category._id)}
+                                                onClick={() => category._id && handleDeleteClick(category._id)}
                                                 className="p-1.5 text-muted-foreground hover:text-rose-500 transition-colors hover:bg-rose-500/10 rounded-md"
                                                 title="Delete"
                                             >
@@ -343,7 +356,7 @@ export default function CategoriesPage() {
                             </button>
                             <button
                                 onClick={handleSave}
-                                disabled={saving || !formData.name}
+                                disabled={saving || uploading || !formData.name || !formData.iconSvg}
                                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                             >
                                 {saving ? (
@@ -362,6 +375,15 @@ export default function CategoriesPage() {
                     </div>
                 </div>
             )}
+            {/* Alert Modal */}
+            <AlertModal
+                isOpen={alertOpen}
+                onClose={() => setAlertOpen(false)}
+                onConfirm={handleConfirmDelete}
+                loading={loading}
+                title="Delete Category"
+                description="Are you sure you want to delete this category? This action cannot be undone."
+            />
         </div>
     );
 }

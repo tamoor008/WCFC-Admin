@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { adminService } from "@/lib/api";
 import { ArrowLeft, Loader2, Save, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function NewProductPage() {
+export default function EditProductPage() {
     const router = useRouter();
+    const params = useParams();
+    const id = params.id as string;
+
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(true);
     const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -24,8 +28,56 @@ export default function NewProductPage() {
         variants: [] as { name: string; price: string; stock: string; image: string }[],
         thcaContent: "",
         cbdContent: "",
-        status: "active" as "active" | "draft" | "archived"
+        status: "active" as "active" | "draft" | "archived" | "inactive" | "deleted"
     });
+
+    // Fetch product and categories
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const [productRes, categoryRes] = await Promise.all([
+                    adminService.getProduct(id),
+                    adminService.getCategories()
+                ]);
+
+                // Set Categories
+                const catData = categoryRes.data;
+                const categoryList = Array.isArray(catData) ? catData : (catData.categories || []);
+                setCategories(categoryList);
+
+                // Set Product Data
+                const product = productRes.data;
+                setFormData({
+                    name: product.name || "",
+                    description: product.description || "",
+                    price: product.price?.toString() || "",
+                    originalPrice: product.originalPrice?.toString() || "",
+                    stock: product.stock?.toString() || "",
+                    category: typeof product.category === 'object' && product.category ? (product.category as any)._id : product.category || "",
+                    images: product.images || (product.image ? [product.image] : []),
+                    variants: product.variants ? product.variants.map((v: any) => ({
+                        name: v.name,
+                        price: v.price?.toString() || "",
+                        stock: v.stock?.toString() || "",
+                        image: v.image || ""
+                    })) : [],
+                    thcaContent: product.thcaContent || "",
+                    cbdContent: product.cbdContent || "",
+                    status: product.status || "active"
+                });
+
+            } catch (error) {
+                console.error("Failed to load data", error);
+                toast.error("Failed to load product data");
+            } finally {
+                setFetching(false);
+            }
+        };
+
+        if (id) {
+            init();
+        }
+    }, [id]);
 
     const addVariant = () => {
         setFormData(prev => ({
@@ -76,22 +128,6 @@ export default function NewProductPage() {
         }
     };
 
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const response = await adminService.getCategories();
-                const data = response.data;
-                // Handle different response structures
-                const categoryList = Array.isArray(data) ? data : (data.categories || []);
-                setCategories(categoryList);
-            } catch (error) {
-                console.error("Failed to fetch categories", error);
-                // Don't block UI, just won't have autocomplete
-            }
-        };
-        fetchCategories();
-    }, []);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -137,7 +173,7 @@ export default function NewProductPage() {
                 for (const file of files) {
                     const uploadData = new FormData();
                     uploadData.append('image', file);
-                    // @ts-ignore - API method added recently
+                    // @ts-ignore
                     const { data } = await adminService.uploadImage(uploadData, 'product');
                     if (data.url) {
                         newImageUrls.push(data.url);
@@ -171,15 +207,17 @@ export default function NewProductPage() {
     const handleSubmit = async (e: React.FormEvent, status: "active" | "draft" = "active") => {
         e.preventDefault();
 
+        // Use the current status from formData if not explicitly passed (or override if 'save as draft' button used)
+        const finalStatus = status;
+
         // Validation: Verify all variants have an image (Only for Active products)
-        if (status === 'active') {
+        if (finalStatus === 'active') {
             const variantsWithoutImages = formData.variants.filter(v => !v.image && v.name);
             if (variantsWithoutImages.length > 0) {
                 toast.error("All product variants must have an image.");
                 return;
             }
         }
-
 
         setLoading(true);
 
@@ -196,7 +234,7 @@ export default function NewProductPage() {
 
             const productData = {
                 ...formData,
-                status,
+                status: finalStatus,
                 price: price,
                 originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
                 stock: stock,
@@ -210,19 +248,27 @@ export default function NewProductPage() {
                 })).filter(v => v.name) // Filter out empty variants
             };
 
-            await adminService.createProduct(productData);
-            toast.success(`Product ${status === 'draft' ? 'saved as draft' : 'created'} successfully`);
+            await adminService.updateProduct(id, productData);
+            toast.success(`Product updated successfully`);
             router.push("/products");
         } catch (error: any) {
-            console.error("Failed to create product:", error);
-            toast.error(error?.response?.data?.error || "Failed to create product");
+            console.error("Failed to update product:", error);
+            toast.error(error?.response?.data?.error || "Failed to update product");
         } finally {
             setLoading(false);
         }
     };
 
+    if (fetching) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-10">
             <div className="flex items-center space-x-4">
                 <button
                     onClick={() => router.back()}
@@ -231,15 +277,15 @@ export default function NewProductPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </button>
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Add New Product</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Edit Product</h2>
                     <p className="text-muted-foreground mt-1">
-                        Create a new product in your catalog
+                        Update product details and inventory
                     </p>
                 </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-                <form onSubmit={(e) => handleSubmit(e, 'active')} className="space-y-6">
+                <form onSubmit={(e) => handleSubmit(e, formData.status as any)} className="space-y-6">
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -354,6 +400,24 @@ export default function NewProductPage() {
                                 placeholder="e.g. 5%"
                                 className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Status
+                            </label>
+                            <div className="relative">
+                                <select
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -505,11 +569,10 @@ export default function NewProductPage() {
                     <div className="flex justify-end pt-4 space-x-4">
                         <button
                             type="button"
-                            onClick={(e) => handleSubmit(e, 'draft')}
-                            disabled={loading || isUploading}
-                            className="flex items-center justify-center space-x-2 bg-secondary text-secondary-foreground px-6 py-2.5 rounded-lg font-medium hover:bg-secondary/80 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => router.back()}
+                            className="flex items-center justify-center space-x-2 bg-secondary text-secondary-foreground px-6 py-2.5 rounded-lg font-medium hover:bg-secondary/80 transition-all active:scale-95"
                         >
-                            <span>Save as Draft</span>
+                            Cancel
                         </button>
                         <button
                             type="submit"
@@ -519,12 +582,12 @@ export default function NewProductPage() {
                             {loading ? (
                                 <>
                                     <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>Creating...</span>
+                                    <span>Saving...</span>
                                 </>
                             ) : (
                                 <>
                                     <Save className="h-5 w-5" />
-                                    <span>Create Product</span>
+                                    <span>Update Product</span>
                                 </>
                             )}
                         </button>

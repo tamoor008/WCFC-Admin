@@ -13,7 +13,8 @@ import {
     Tags,
     Bell,
     ListChecks,
-    Star
+    Star,
+    Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -25,6 +26,7 @@ const navigation = [
     { name: "Categories", href: "/categories", icon: Tags },
     { name: "Orders", href: "/orders", icon: ShoppingBag },
     { name: "Customers", href: "/customers", icon: Users },
+    { name: "Drivers", href: "/drivers", icon: Truck },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Reviews", href: "/reviews", icon: Star },
     { name: "Notifications", href: "/notifications", icon: Bell },

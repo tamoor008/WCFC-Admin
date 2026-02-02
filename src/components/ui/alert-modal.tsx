@@ -47,14 +47,14 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                     <button
                         disabled={loading}
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md transition-colors disabled:opacity-50"
+                        className="px-4 py-2 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         disabled={loading}
                         onClick={onConfirm}
-                        className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md transition-colors disabled:opacity-50"
+                        className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-md hover:scale-[1.02] active:scale-95 active:brightness-90 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                         {loading ? 'Processing...' : 'Continue'}
                     </button>

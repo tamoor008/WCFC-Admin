@@ -24,8 +24,14 @@ interface Order {
     totalAmount: number;
     status: string;
     createdAt: string;
-    items?: any[];
+    products?: Array<{
+        productId?: { name?: string } | string | null;
+        quantity?: number;
+        variantName?: string | null;
+    }>;
 }
+
+type OrderItem = NonNullable<Order["products"]>[number];
 
 export default function OrdersPage() {
     const router = useRouter();
@@ -117,6 +123,25 @@ export default function OrdersPage() {
         }
     };
 
+    const formatItemLabel = (item?: OrderItem) => {
+        if (!item) return "";
+        const productName =
+            typeof item.productId === "string"
+                ? "Product"
+                : item.productId?.name || "Product";
+        const variantLabel = item.variantName ? ` (${item.variantName})` : "";
+        const qty = item.quantity ?? 1;
+        return `${qty}× ${productName}${variantLabel}`;
+    };
+
+    const renderItemsSummary = (order: Order) => {
+        const items = order.products || [];
+        if (items.length === 0) return "—";
+        const summary = items.slice(0, 2).map(formatItemLabel).filter(Boolean);
+        const remaining = items.length - summary.length;
+        return remaining > 0 ? `${summary.join(", ")} +${remaining} more` : summary.join(", ");
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {assignOrderId && (
@@ -204,6 +229,7 @@ export default function OrdersPage() {
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Driver</th>
+                                <th className="px-6 py-4">Items</th>
                                 <th className="px-6 py-4 text-right">Total</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -211,7 +237,7 @@ export default function OrdersPage() {
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center">
+                                    <td colSpan={8} className="p-8 text-center">
                                         <div className="flex justify-center items-center space-x-2 text-muted-foreground">
                                             <Loader2 className="h-6 w-6 animate-spin" />
                                             <span>Loading orders...</span>
@@ -220,7 +246,7 @@ export default function OrdersPage() {
                                 </tr>
                             ) : orders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
                                         No orders found.
                                     </td>
                                 </tr>
@@ -264,6 +290,9 @@ export default function OrdersPage() {
                                                     Assign Driver
                                                 </button>
                                             )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                                            {renderItemsSummary(order)}
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium">
                                             ${typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount}

@@ -44,7 +44,7 @@ interface Order {
     customerName?: string;
     email?: string;
     address?: { street?: string; city?: string; state?: string; zipCode?: string };
-    products?: { productId: string; quantity: number }[];
+    products?: { productId: string; quantity: number; variantName?: string | null; variantPrice?: number | null }[];
 }
 
 interface CustomerDetail {

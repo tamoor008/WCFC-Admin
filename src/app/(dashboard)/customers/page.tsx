@@ -40,6 +40,7 @@ interface Customer {
     referralCode?: string | null;
     name: string;
     email: string;
+    picture?: string | null;
     emailVerified?: boolean;
     phone?: string;
     createdAt: string;
@@ -278,11 +279,19 @@ export default function CustomersPage() {
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-3">
-                                                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 flex-shrink-0">
-                                                    {customer.name
-                                                        ? customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                                                        : 'U'}
-                                                </div>
+                                                {customer.picture ? (
+                                                    <img
+                                                        src={customer.picture}
+                                                        alt={customer.name}
+                                                        className="h-10 w-10 rounded-full object-cover border border-border flex-shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 flex-shrink-0">
+                                                        {customer.name
+                                                            ? customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                                                            : 'U'}
+                                                    </div>
+                                                )}
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-semibold">{customer.name || 'Unknown'}</span>
                                                     <span className="text-xs text-muted-foreground">Display ID: {customer.displayId || customer._id.toString().slice(-6)}</span>

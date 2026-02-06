@@ -16,7 +16,9 @@ export default function SettingsPage() {
   const [driverAppStoreLink, setDriverAppStoreLink] = useState("");
   const [driverPlayStoreLink, setDriverPlayStoreLink] = useState("");
   const [autoAcceptReviews, setAutoAcceptReviews] = useState(false);
-  const [deliveryFeeUnder50, setDeliveryFeeUnder50] = useState("4");
+  const [minOrderAmount, setMinOrderAmount] = useState("0");
+  const [deliveryFee, setDeliveryFee] = useState("0");
+  // const [deliveryFeeUnder50, setDeliveryFeeUnder50] = useState("4"); // Deprecated
 
   // Home Config State
   const [homeBannerText, setHomeBannerText] = useState("");
@@ -93,6 +95,8 @@ export default function SettingsPage() {
           setDriverAppStoreLink(settings.driverAppStoreLink || "");
           setDriverPlayStoreLink(settings.driverPlayStoreLink || "");
           setAutoAcceptReviews(settings.autoAcceptReviews || false);
+          setMinOrderAmount(String(settings.minOrderAmount || 0));
+          setDeliveryFee(String(settings.deliveryFee || 0));
         }
 
         // Fetch App Config
@@ -100,9 +104,6 @@ export default function SettingsPage() {
         if (config) {
           setHomeBannerText(config.home_banner_text || "");
           setHomeBannerImage(config.home_banner_image || "");
-          if (config.delivery_fee_under_50 !== undefined && config.delivery_fee_under_50 !== null) {
-            setDeliveryFeeUnder50(String(config.delivery_fee_under_50));
-          }
         }
       } catch (e) {
         console.error("Failed to fetch profile", e);
@@ -128,11 +129,19 @@ export default function SettingsPage() {
       toast.error("Name is required");
       return;
     }
-    const parsedDeliveryFee = Number(deliveryFeeUnder50);
+
+    const parsedMinOrder = Number(minOrderAmount);
+    const parsedDeliveryFee = Number(deliveryFee);
+
+    if (!Number.isFinite(parsedMinOrder) || parsedMinOrder < 0) {
+      toast.error("Minimum order amount must be a valid non-negative number");
+      return;
+    }
     if (!Number.isFinite(parsedDeliveryFee) || parsedDeliveryFee < 0) {
       toast.error("Delivery fee must be a valid non-negative number");
       return;
     }
+
     setSaving(true);
     try {
       console.log("SettingsPage: Calling updates");
@@ -147,6 +156,8 @@ export default function SettingsPage() {
         playStoreLink: ensureProtocol(playStoreLink),
         driverAppStoreLink: ensureProtocol(driverAppStoreLink),
         driverPlayStoreLink: ensureProtocol(driverPlayStoreLink),
+        minOrderAmount: parsedMinOrder,
+        deliveryFee: parsedDeliveryFee,
         // @ts-ignore
         autoAcceptReviews
       });
@@ -154,7 +165,6 @@ export default function SettingsPage() {
       // Update App Config
       await adminService.updateAppConfig("home_banner_text", homeBannerText);
       await adminService.updateAppConfig("home_banner_image", homeBannerImage);
-      await adminService.updateAppConfig("delivery_fee_under_50", parsedDeliveryFee);
 
       if (typeof window !== "undefined" && profile) {
         const stored = getAdminUser();
@@ -287,19 +297,33 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">This email will be shown to users who need support (e.g. blocked users).</p>
               </div>
 
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Delivery Fee (Orders Under $50)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={deliveryFeeUnder50}
-                  onChange={(e) => setDeliveryFeeUnder50(e.target.value)}
-                  placeholder="4.00"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-                <p className="text-xs text-muted-foreground">Orders $50 and over receive free delivery.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Minimum Order Amount ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={minOrderAmount}
+                    onChange={(e) => setMinOrderAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Delivery Fee ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={deliveryFee}
+                    onChange={(e) => setDeliveryFee(e.target.value)}
+                    placeholder="0.00"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">Set delivery fee to 0 for free delivery.</p>
 
               <div className="grid gap-2">
                 <label className="text-sm font-medium">App Store Link (iOS)</label>

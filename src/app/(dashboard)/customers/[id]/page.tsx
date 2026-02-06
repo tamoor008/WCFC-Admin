@@ -27,6 +27,8 @@ interface Address {
     city?: string;
     state?: string;
     zipCode?: string;
+    lat?: number;
+    lng?: number;
 }
 
 interface Referrer {
@@ -51,6 +53,7 @@ interface CustomerDetail {
     _id: string;
     name: string;
     email: string;
+    picture?: string | null;
     phone?: string | null;
     displayId?: string | null;
     referralCode?: string | null;
@@ -164,9 +167,17 @@ export default function CustomerDetailPage() {
                         <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                     </Link>
                     <div className="flex items-center gap-3">
-                        <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg border border-primary/20">
-                            {customer.name ? customer.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() : "U"}
-                        </div>
+                        {customer.picture ? (
+                            <img
+                                src={customer.picture}
+                                alt={customer.name}
+                                className="h-14 w-14 rounded-full object-cover border border-border"
+                            />
+                        ) : (
+                            <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg border border-primary/20">
+                                {customer.name ? customer.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() : "U"}
+                            </div>
+                        )}
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">{customer.name || "Unknown"}</h1>
                             <p className="text-sm text-muted-foreground font-mono">
@@ -331,14 +342,27 @@ export default function CustomerDetailPage() {
                         {customer.addresses.map((addr, idx) => (
                             <div
                                 key={idx}
-                                className="p-4 rounded-lg bg-muted/30 border border-border"
+                                className="p-4 rounded-lg bg-muted/30 border border-border flex justify-between items-start"
                             >
-                                {addr.label && (
-                                    <p className="text-sm font-semibold text-foreground mb-1">{addr.label}</p>
+                                <div>
+                                    {addr.label && (
+                                        <p className="text-sm font-semibold text-foreground mb-1">{addr.label}</p>
+                                    )}
+                                    <p className="text-sm text-muted-foreground">
+                                        {[addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ")}
+                                    </p>
+                                </div>
+                                {addr.lat && addr.lng && (
+                                    <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${addr.lat},${addr.lng}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-2 py-1 rounded hover:bg-primary/20"
+                                    >
+                                        <MapPin className="h-3 w-3" />
+                                        View on Map
+                                    </a>
                                 )}
-                                <p className="text-sm text-muted-foreground">
-                                    {[addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ")}
-                                </p>
                             </div>
                         ))}
                     </div>

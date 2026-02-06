@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.238:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.115.204:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -87,7 +87,7 @@ export const adminService = {
     getProfile: () => api.get('/auth/me'),
     updateProfile: (data: { name?: string }) => api.patch('/auth/me', data),
     getPlatformSettings: () => api.get('/admin/settings'),
-    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string; driverAppStoreLink?: string; driverPlayStoreLink?: string; autoAcceptReviews?: boolean }) => api.put('/admin/settings', data),
+    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string; driverAppStoreLink?: string; driverPlayStoreLink?: string; minOrderAmount?: number; deliveryFee?: number; autoAcceptReviews?: boolean }) => api.put('/admin/settings', data),
     // Config
     getAppConfig: () => api.get('/config'),
     updateAppConfig: (key: string, value: any) => api.post('/config', { key, value }),

@@ -27,7 +27,6 @@ const navigation = [
     { name: "Orders", href: "/orders", icon: ShoppingBag },
     { name: "Customers", href: "/customers", icon: Users },
     { name: "Drivers", href: "/drivers", icon: Truck },
-    { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Reviews", href: "/reviews", icon: Star },
     { name: "Notifications", href: "/notifications", icon: Bell },
     { name: "Whitelist", href: "/whitelist", icon: ListChecks },

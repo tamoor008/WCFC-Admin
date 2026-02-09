@@ -213,10 +213,10 @@ export default function CustomerDetailPage() {
                         onClick={handleBlockToggle}
                         disabled={blocking}
                         className={cn(
-                            "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
+                            "inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all active:scale-95 shadow-lg",
                             customer.isBlocked
-                                ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20"
-                                : "bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20"
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20"
+                                : "bg-red-600 text-white hover:bg-red-700 shadow-red-500/20"
                         )}
                     >
                         {blocking ? (

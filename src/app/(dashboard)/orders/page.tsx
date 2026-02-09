@@ -38,12 +38,14 @@ interface Order {
             name?: string;
             image?: string;
             images?: string[];
+            price?: number;
             variants?: Array<{
                 name: string;
                 image?: string;
             }>;
         } | string | null;
         quantity?: number;
+        price?: number;
         variantName?: string | null;
         variantPrice?: number;
     }>;
@@ -80,9 +82,9 @@ export default function OrdersPage() {
                 setOrders(ordersList);
                 setTotalPages(data.pages || data.totalPages || 1);
                 setTotalOrders(data.total || data.totalDocs || 0);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Failed to fetch orders:", error);
-                toast.error("Failed to load orders");
+                toast.error(error.userMessage || "Failed to load orders");
             } finally {
                 setLoading(false);
             }
@@ -257,7 +259,12 @@ export default function OrdersPage() {
                                                         </td>
                                                         <td className="px-4 py-3 text-center">{item.quantity}</td>
                                                         <td className="px-4 py-3 text-right">
-                                                            ${(item.variantPrice || 0).toFixed(2)}
+                                                            ${(
+                                                                item.price ||
+                                                                item.variantPrice ||
+                                                                (typeof item.productId === 'object' && item.productId?.price) ||
+                                                                0
+                                                            ).toFixed(2)}
                                                         </td>
                                                     </tr>
                                                 );

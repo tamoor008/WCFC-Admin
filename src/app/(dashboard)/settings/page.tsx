@@ -145,26 +145,30 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       console.log("SettingsPage: Calling updates");
-      // Update Profile
-      const { data: profile } = await adminService.updateProfile({
-        name: trimmed,
-      });
-      // Update Settings
-      await adminService.updatePlatformSettings({
-        supportEmail: contactEmail.trim(),
-        appStoreLink: ensureProtocol(appStoreLink),
-        playStoreLink: ensureProtocol(playStoreLink),
-        driverAppStoreLink: ensureProtocol(driverAppStoreLink),
-        driverPlayStoreLink: ensureProtocol(driverPlayStoreLink),
-        minOrderAmount: parsedMinOrder,
-        deliveryFee: parsedDeliveryFee,
-        // @ts-ignore
-        autoAcceptReviews
-      });
 
-      // Update App Config
-      await adminService.updateAppConfig("home_banner_text", homeBannerText);
-      await adminService.updateAppConfig("home_banner_image", homeBannerImage);
+      const updatePromises = [
+        // Update Profile
+        adminService.updateProfile({ name: trimmed }),
+
+        // Update Settings
+        adminService.updatePlatformSettings({
+          supportEmail: contactEmail.trim(),
+          appStoreLink: ensureProtocol(appStoreLink),
+          playStoreLink: ensureProtocol(playStoreLink),
+          driverAppStoreLink: ensureProtocol(driverAppStoreLink),
+          driverPlayStoreLink: ensureProtocol(driverPlayStoreLink),
+          minOrderAmount: parsedMinOrder,
+          deliveryFee: parsedDeliveryFee,
+          autoAcceptReviews
+        }),
+
+        // Update App Config
+        adminService.updateAppConfig("home_banner_text", homeBannerText),
+        adminService.updateAppConfig("home_banner_image", homeBannerImage)
+      ];
+
+      const results = await Promise.all(updatePromises);
+      const profile = results[0].data;
 
       if (typeof window !== "undefined" && profile) {
         const stored = getAdminUser();
@@ -175,10 +179,10 @@ export default function SettingsPage() {
           );
         }
       }
-      toast.success("Profile updated");
-    } catch (error) {
+      toast.success("Settings updated successfully");
+    } catch (error: any) {
       console.error("SettingsPage: Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast.error(error?.response?.data?.error || "Failed to update profile");
     } finally {
       setSaving(false);
     }

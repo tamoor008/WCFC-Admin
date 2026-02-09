@@ -248,7 +248,6 @@ export default function CustomersPage() {
                                 <th className="px-6 py-4">Email</th>
                                 <th className="px-6 py-4">Joined via</th>
                                 <th className="px-6 py-4">Referrer</th>
-                                <th className="px-6 py-4">Addresses</th>
                                 <th className="px-6 py-4">Referral Code</th>
                                 <th className="px-6 py-4">Joined</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
@@ -257,7 +256,7 @@ export default function CustomersPage() {
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center">
+                                    <td colSpan={8} className="p-8 text-center">
                                         <div className="flex justify-center items-center space-x-2 text-muted-foreground">
                                             <Loader2 className="h-6 w-6 animate-spin" />
                                             <span>Loading customers...</span>
@@ -266,7 +265,7 @@ export default function CustomersPage() {
                                 </tr>
                             ) : customers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
                                         No customers found matching your criteria.
                                     </td>
                                 </tr>
@@ -362,32 +361,7 @@ export default function CustomersPage() {
                                                 <span className="text-sm text-muted-foreground italic">—</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            {customer.addresses && customer.addresses.length > 0 ? (
-                                                <div className="flex flex-col space-y-2 max-w-xs">
-                                                    {customer.addresses.map((address, idx) => (
-                                                        <div key={idx} className="flex items-start space-x-2 text-sm">
-                                                            <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground flex-shrink-0" />
-                                                            <div className="flex flex-col">
-                                                                {address.label && (
-                                                                    <span className="font-semibold text-foreground">{address.label}</span>
-                                                                )}
-                                                                <span className="text-muted-foreground">
-                                                                    {[
-                                                                        address.street,
-                                                                        address.city,
-                                                                        address.state,
-                                                                        address.zipCode
-                                                                    ].filter(Boolean).join(', ')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground italic">No addresses</span>
-                                            )}
-                                        </td>
+
                                         <td className="px-6 py-4">
                                             <span className="text-sm font-mono text-muted-foreground">
                                                 {customer.referralCode || '—'}

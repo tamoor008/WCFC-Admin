@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.115.204:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.10.10:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -24,6 +24,20 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Handle network errors and server unavailability
+        const errorCode = error?.code;
+        const isNetworkError =
+            errorCode === 'ECONNABORTED' ||
+            errorCode === 'ECONNREFUSED' ||
+            errorCode === 'ENOTFOUND' ||
+            errorCode === 'ETIMEDOUT' ||
+            errorCode === 'ERR_NETWORK' ||
+            !error.response;
+
+        const userMessage = isNetworkError
+            ? 'Unable to connect to the server. Please check your internet connection and try again.'
+            : error.response?.data?.error || error.message || 'An unexpected error occurred.';
+
         // Handle 401 Unauthorized - no token or invalid token
         if (error.response?.status === 401) {
             // Clear invalid token
@@ -39,10 +53,15 @@ api.interceptors.response.use(
             return Promise.reject({
                 ...error,
                 message: 'Authentication required. Please log in.',
+                userMessage: 'Authentication required. Please log in.',
                 isAuthError: true,
             });
         }
-        return Promise.reject(error);
+
+        return Promise.reject({
+            ...error,
+            userMessage
+        });
     }
 );
 

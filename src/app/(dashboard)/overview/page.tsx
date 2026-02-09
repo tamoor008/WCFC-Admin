@@ -21,43 +21,97 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("30");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [showCustomRange, setShowCustomRange] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [appliedCustomRange, setAppliedCustomRange] = useState<{ start: string; end: string } | null>(null);
+
+  const validateDates = (start: string, end: string) => {
+    if (!start || !end) {
+      return "Please select both start and end dates.";
+    }
+    const s = new Date(start);
+    const e = new Date(end);
+    if (s > e) {
+      return "Start date cannot be after end date.";
+    }
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (e > today) {
+      return "End date cannot be in the future.";
+    }
+    return null;
+  };
+
+  const fetchData = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const params: any = {};
+
+      if (showCustomRange && appliedCustomRange) {
+        params.startDate = appliedCustomRange.start;
+        params.endDate = appliedCustomRange.end;
+      } else if (!showCustomRange) {
+        params.range = dateRange;
+      } else {
+        // If showCustomRange is true but none applied yet, don't fetch or fetch default
+        params.range = dateRange;
+      }
+
+      const [statsRes, ordersRes] = await Promise.all([
+        adminService.getStats(params),
+        adminService.getOrders()
+      ]);
+      setStatsData(statsRes.data.stats);
+      setRecentOrders((ordersRes.data.orders || []).slice(0, 5));
+    } catch (err: any) {
+      console.error("Failed to fetch dashboard data", err);
+      if (err?.isAuthError || err?.response?.status === 401) {
+        const errorMsg = 'Authentication required. Please log in.';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      } else {
+        const errorMsg = 'Failed to load dashboard data. Please check your connection.';
+        setError(errorMsg);
+        toast.error(err?.response?.data?.error || errorMsg);
+      }
+      setStatsData({
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalProducts: 0,
+        totalCustomers: 0,
+        statusCounts: { pending: 0 }
+      });
+      setRecentOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        const [statsRes, ordersRes] = await Promise.all([
-          adminService.getStats({ range: dateRange }),
-          adminService.getOrders()
-        ]);
-        setStatsData(statsRes.data.stats);
-        setRecentOrders((ordersRes.data.orders || []).slice(0, 5));
-      } catch (err: any) {
-        console.error("Failed to fetch dashboard data", err);
-        if (err?.isAuthError || err?.response?.status === 401) {
-          const errorMsg = 'Authentication required. Please log in.';
-          setError(errorMsg);
-          toast.error(errorMsg);
-        } else {
-          const errorMsg = 'Failed to load dashboard data. Please check your connection.';
-          setError(errorMsg);
-          toast.error(err?.response?.data?.error || errorMsg);
-        }
-        setStatsData({
-          totalRevenue: 0,
-          totalOrders: 0,
-          totalProducts: 0,
-          totalCustomers: 0,
-          statusCounts: { pending: 0 }
-        });
-        setRecentOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [dateRange]);
+    if (!showCustomRange) {
+      fetchData();
+    }
+  }, [dateRange, showCustomRange]);
+
+  useEffect(() => {
+    if (showCustomRange && appliedCustomRange) {
+      fetchData();
+    }
+  }, [appliedCustomRange]);
+
+  const handleApplyCustomRange = () => {
+    const error = validateDates(startDate, endDate);
+    if (error) {
+      setDateError(error);
+      toast.error(error);
+      return;
+    }
+    setDateError(null);
+    setAppliedCustomRange({ start: startDate, end: endDate });
+  };
 
   if (loading) {
     return (
@@ -81,18 +135,22 @@ export default function OverviewPage() {
     );
   }
 
+  const rangeLabel = showCustomRange && startDate && endDate
+    ? `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`
+    : `Last ${dateRange} days`;
+
   const statCards = [
     {
       name: "Total Revenue",
       value: `$${statsData?.totalRevenue?.toLocaleString() || '0'}`,
-      change: `Last ${dateRange} days`,
+      change: rangeLabel,
       trend: "neutral",
       icon: DollarSign,
     },
     {
       name: "Orders",
       value: statsData?.totalOrders?.toString() || '0',
-      change: `Last ${dateRange} days`,
+      change: rangeLabel,
       trend: "neutral",
       icon: ShoppingCart,
     },
@@ -121,19 +179,84 @@ export default function OverviewPage() {
             Welcome back, here's what's happening with your store.
           </p>
         </div>
-        <div className="flex items-center space-x-2 bg-card border border-border rounded-lg p-1">
-          {['7', '30', '90', '365'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setDateRange(range)}
-              className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                dateRange === range ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              )}
-            >
-              {range === '365' ? 'Year' : `${range} Days`}
-            </button>
-          ))}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center space-x-2 bg-card border border-border rounded-lg p-1">
+              {['7', '30', '90', '365'].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setDateRange(range);
+                    setShowCustomRange(false);
+                    setAppliedCustomRange(null);
+                    setDateError(null);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    !showCustomRange && dateRange === range ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  {range === '365' ? 'Year' : `${range} Days`}
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  setShowCustomRange(!showCustomRange);
+                  if (showCustomRange) {
+                    setAppliedCustomRange(null);
+                    setDateError(null);
+                  }
+                }}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  showCustomRange ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                Custom
+              </button>
+            </div>
+            {dateError && (
+              <span className="text-[10px] text-destructive font-medium px-2 animate-in fade-in slide-in-from-top-1">
+                {dateError}
+              </span>
+            )}
+          </div>
+
+          {showCustomRange && (
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1 animate-in slide-in-from-right-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setDateError(null);
+                }}
+                className={cn(
+                  "bg-transparent text-sm px-2 py-1 focus:outline-none transition-colors rounded",
+                  dateError && "text-destructive"
+                )}
+              />
+              <span className="text-muted-foreground text-xs uppercase font-bold tracking-wider">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setDateError(null);
+                }}
+                className={cn(
+                  "bg-transparent text-sm px-2 py-1 focus:outline-none transition-colors rounded",
+                  dateError && "text-destructive"
+                )}
+              />
+              <button
+                onClick={handleApplyCustomRange}
+                className="ml-2 px-3 py-1 text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-md"
+              >
+                Apply
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

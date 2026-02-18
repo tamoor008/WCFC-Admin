@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, logout } from "@/lib/auth";
+import { adminService } from "@/lib/api";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -11,14 +12,27 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const checkAuth = () => {
-      if (isAuthenticated()) {
-        setIsAuthorized(true);
-      } else {
-        // Redirect to login, preserving the intended destination
+    const checkAuth = async () => {
+      if (!isAuthenticated()) {
         router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        setIsAuthorized(false);
+        setIsChecking(false);
+        return;
       }
-      setIsChecking(false);
+
+      try {
+        // Validate token with backend
+        await adminService.getProfile();
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error("Token validation failed:", error);
+        // Clear token and user data
+        logout();
+        setIsAuthorized(false);
+        router.push('/login');
+      } finally {
+        setIsChecking(false);
+      }
     };
 
     checkAuth();

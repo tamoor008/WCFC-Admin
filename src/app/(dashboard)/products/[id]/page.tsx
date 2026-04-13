@@ -26,8 +26,6 @@ interface Product {
     images: string[];
     variants: Variant[];
     status: string;
-    thcaContent?: string;
-    cbdContent?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -40,6 +38,16 @@ export default function ProductDetailsPage() {
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string>("");
+
+    const formatPrice = (price?: number) => {
+        if (price == null) return "-";
+        return `Rs.${price.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    const hasRealVariants = product && (
+        product.variants.length > 1 || 
+        (product.variants.length === 1 && product.variants[0].name !== 'Default Title')
+    );
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -120,13 +128,14 @@ export default function ProductDetailsPage() {
                     )}>
                         {product.status}
                     </span>
-                    <button
-                        onClick={() => router.push(`/products/${id}/edit`)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-all"
-                    >
-                        <Edit className="h-4 w-4" />
-                        Edit Product
-                    </button>
+                </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                    <p className="font-semibold">Shopify Managed Product</p>
+                    <p>This product is synchronized from Shopify. Use the Shopify admin to edit details, pricing, or inventory.</p>
                 </div>
             </div>
 
@@ -175,10 +184,10 @@ export default function ProductDetailsPage() {
                                 <DollarSign className="h-4 w-4 text-primary" />
                             </div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold">${product.price.toFixed(2)}</span>
+                                <span className="text-2xl font-bold">{formatPrice(product.price)}</span>
                                 {product.originalPrice && product.originalPrice > product.price && (
                                     <span className="text-sm text-muted-foreground line-through">
-                                        ${product.originalPrice.toFixed(2)}
+                                        {formatPrice(product.originalPrice)}
                                     </span>
                                 )}
                             </div>
@@ -198,14 +207,10 @@ export default function ProductDetailsPage() {
                         </div>
                         <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-medium text-muted-foreground uppercase">THCA / CBD</span>
-                                <Info className="h-4 w-4 text-purple-500" />
+                                <span className="text-xs font-medium text-muted-foreground uppercase">Status</span>
+                                <Archive className="h-4 w-4 text-slate-500" />
                             </div>
-                            <div className="flex flex-col">
-                                {product.thcaContent && <span className="text-sm font-medium">THCA: <span className="font-normal">{product.thcaContent}</span></span>}
-                                {product.cbdContent && <span className="text-sm font-medium">CBD: <span className="font-normal">{product.cbdContent}</span></span>}
-                                {!product.thcaContent && !product.cbdContent && <span className="text-sm text-muted-foreground italic">Not specified</span>}
-                            </div>
+                            <span className="text-2xl font-bold uppercase tracking-tight">{product.status}</span>
                         </div>
                     </div>
 
@@ -214,21 +219,27 @@ export default function ProductDetailsPage() {
                         <h3 className="text-lg font-semibold flex items-center gap-2">
                             Description
                         </h3>
-                        <div className="bg-card border border-border rounded-lg p-4 text-sm leading-relaxed whitespace-pre-line shadow-sm min-h-[100px]">
-                            {product.description || <span className="text-muted-foreground italic">No description provided.</span>}
-                        </div>
+                        {product.description ? (
+                            <div 
+                                className="bg-card border border-border rounded-lg p-4 text-sm leading-relaxed shadow-sm min-h-[100px] prose prose-sm max-w-none dark:prose-invert"
+                                dangerouslySetInnerHTML={{ __html: product.description }}
+                            />
+                        ) : (
+                            <div className="bg-card border border-border rounded-lg p-4 text-sm italic text-muted-foreground border-dashed">
+                                No description provided.
+                            </div>
+                        )}
                     </div>
 
-                    {/* Variants */}
-                    <div className="space-y-3">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                            Variants
-                            <span className="text-xs font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                                {product.variants?.length || 0}
-                            </span>
-                        </h3>
+                    {hasRealVariants && (
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                Variants
+                                <span className="text-xs font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                    {product.variants?.length || 0}
+                                </span>
+                            </h3>
 
-                        {product.variants && product.variants.length > 0 ? (
                             <div className="border border-border rounded-lg overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
@@ -255,7 +266,7 @@ export default function ProductDetailsPage() {
                                                 </td>
                                                 <td className="px-4 py-2 font-medium">{variant.name}</td>
                                                 <td className="px-4 py-2 text-muted-foreground">
-                                                    {variant.price ? `$${variant.price.toFixed(2)}` : '-'}
+                                                    {formatPrice(variant.price)}
                                                 </td>
                                                 <td className="px-4 py-2 text-right font-mono">
                                                     {variant.stock}
@@ -265,12 +276,8 @@ export default function ProductDetailsPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        ) : (
-                            <div className="bg-muted/30 border border-border border-dashed rounded-lg p-6 text-center text-muted-foreground">
-                                This product has no variants.
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

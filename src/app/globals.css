@@ -8,7 +8,7 @@
     --card-foreground: #1a1a1a;
     --popover: #ffffff;
     --popover-foreground: #1a1a1a;
-    --primary: #D21911;
+    --primary: #5B7B4C;
     --primary-foreground: #ffffff;
     --secondary: #f8f8f8;
     --secondary-foreground: #1a1a1a;
@@ -20,7 +20,7 @@
     --destructive-foreground: #ffffff;
     --border: #e8e8e8;
     --input: #e0e0e0;
-    --ring: #D21911;
+    --ring: #5B7B4C;
     --radius: 0.75rem;
     --font-geist-sans: "Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-geist-mono: "Geist Mono", "JetBrains Mono", "Fira Code", "Courier New", monospace;
@@ -33,7 +33,7 @@
     --card-foreground: #ffffff;
     --popover: #121212;
     --popover-foreground: #ffffff;
-    --primary: #D21911;
+    --primary: #5B7B4C;
     --primary-foreground: #ffffff;
     --secondary: #1E1E1E;
     --secondary-foreground: #ffffff;
@@ -45,7 +45,7 @@
     --destructive-foreground: #ffffff;
     --border: #2C2C2C;
     --input: #333333;
-    --ring: #D21911;
+    --ring: #5A7C4C;
   }
 }
 

@@ -210,12 +210,6 @@ export default function CustomersPage() {
                         Manage your customer base ({totalCustomers} total)
                     </p>
                 </div>
-                <button
-                    onClick={() => router.push('/customers/new')}
-                    className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
-                    <UserPlus className="h-5 w-5" />
-                    <span>Add Customer</span>
-                </button>
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
@@ -246,9 +240,6 @@ export default function CustomersPage() {
                                 <th className="px-6 py-4">Customer</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Email</th>
-                                <th className="px-6 py-4">Joined via</th>
-                                <th className="px-6 py-4">Referrer</th>
-                                <th className="px-6 py-4">Referral Code</th>
                                 <th className="px-6 py-4">Joined</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -327,45 +318,6 @@ export default function CustomersPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {customer.joinedVia === 'whitelist' ? (
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full",
-                                                    "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                                                )}>
-                                                    Whitelist
-                                                </span>
-                                            ) : customer.joinedVia === 'referral' ? (
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full",
-                                                    "bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20"
-                                                )}>
-                                                    Referral
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground italic">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {customer.referrer ? (
-                                                <div className="flex flex-col space-y-0.5 max-w-[180px]">
-                                                    <span className="text-sm font-medium text-foreground truncate" title={customer.referrer.email}>
-                                                        {customer.referrer.name}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground font-mono">
-                                                        {customer.referrer.displayId || customer.referrer._id}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground italic">—</span>
-                                            )}
-                                        </td>
-
-                                        <td className="px-6 py-4">
-                                            <span className="text-sm font-mono text-muted-foreground">
-                                                {customer.referralCode || '—'}
-                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">
                                             <div className="flex items-center">

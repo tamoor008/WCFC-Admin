@@ -8,7 +8,8 @@ import {
     Package,
     Loader2,
     Edit,
-    Trash
+    Trash,
+    RefreshCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/lib/api";
@@ -42,37 +43,60 @@ export default function ProductsPage() {
     const [totalProducts, setTotalProducts] = useState(0);
     const [alertOpen, setAlertOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
+    const [shopifyConnected, setShopifyConnected] = useState<boolean | null>(null);
+
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const queryStatus = status === 'all' ? undefined : status;
+            const response = await adminService.getProducts({ page, limit: 10, search, status: queryStatus });
+            const data = response.data;
+            let productList = [];
+            if (Array.isArray(data)) {
+                productList = data;
+            } else {
+                productList = data.products || data.docs || [];
+            }
+            setProducts(productList);
+            setTotalPages(data.pages || data.totalPages || 1);
+            setTotalProducts(data.total || data.totalDocs || 0);
+        } catch (error) {
+            console.error("Failed to fetch products:", error);
+            toast.error("Failed to load products");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            setLoading(true);
-            try {
-                // Pass status to API. If status is 'all', we might want to send nothing or specific logic.
-                // Based on backend implementation: if no status param, it shows all non-deleted.
-                // If we want to show ALL including deleted, we might need a specific flag, but usually 'all' tab implies active/draft/inactive.
-                const queryStatus = status === 'all' ? undefined : status;
-                const response = await adminService.getProducts({ page, limit: 10, search, status: queryStatus });
-                const data = response.data;
-                // Adaptation for different response structures
-                let productList = [];
-                if (Array.isArray(data)) {
-                    productList = data;
-                } else {
-                    productList = data.products || data.docs || [];
-                }
-                setProducts(productList);
-                setTotalPages(data.pages || data.totalPages || 1);
-                setTotalProducts(data.total || data.totalDocs || 0);
-            } catch (error) {
-                console.error("Failed to fetch products:", error);
-                toast.error("Failed to load products");
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchProducts();
+        checkShopifyStatus();
     }, [page, search, status]);
+
+    const checkShopifyStatus = async () => {
+        try {
+            const { data } = await adminService.getShopifyStatus();
+            setShopifyConnected(data.connected);
+        } catch (error) {
+            console.error("Failed to check Shopify status", error);
+        }
+    };
+
+    const handleSync = async () => {
+        setSyncing(true);
+        const toastId = toast.loading("Syncing with Shopify...");
+        try {
+            await adminService.syncShopify();
+            toast.success("Shopify sync completed!", { id: toastId });
+            await fetchProducts();
+        } catch (error: any) {
+            console.error("Sync failed:", error);
+            toast.error(error.userMessage || "Failed to sync with Shopify", { id: toastId });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const handleEdit = (id: string) => {
         router.push(`/products/${id}/edit`);
@@ -110,15 +134,25 @@ export default function ProductsPage() {
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">Products</h2>
                     <p className="text-muted-foreground mt-1">
-                        Manage your product catalog ({totalProducts} items)
+                        Products are synchronized from Shopify. Use the Shopify admin to manage your catalog.
                     </p>
                 </div>
-                <button
-                    onClick={() => router.push('/products/new')}
-                    className="flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95">
-                    <Plus className="h-5 w-5" />
-                    <span>Add Product</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSync}
+                        disabled={syncing || shopifyConnected === false}
+                        className={cn(
+                            "flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg font-semibold border transition-all active:scale-95 disabled:opacity-50",
+                            shopifyConnected === false 
+                                ? "bg-muted text-muted-foreground border-border cursor-not-allowed" 
+                                : "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
+                        )}
+                        title={shopifyConnected === false ? "Connect Shopify in Settings to sync" : "Sync with Shopify"}
+                    >
+                        <RefreshCcw className={cn("h-4 w-4", syncing && "animate-spin")} />
+                        <span>{shopifyConnected === false ? "Connection Required" : "Force Sync"}</span>
+                    </button>
+                </div>
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
@@ -150,7 +184,6 @@ export default function ProductsPage() {
                                 <th className="px-6 py-4">Category</th>
                                 <th className="px-6 py-4">Price</th>
                                 <th className="px-6 py-4">Stock</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -206,11 +239,11 @@ export default function ProductsPage() {
                                             <div className="flex flex-col">
                                                 {product.originalPrice && product.originalPrice > product.price && (
                                                     <span className="text-xs text-muted-foreground line-through">
-                                                        ${product.originalPrice.toFixed(2)}
+                                                        Rs.{product.originalPrice.toFixed(2)}
                                                     </span>
                                                 )}
                                                 <span className={product.originalPrice && product.originalPrice > product.price ? "text-red-500" : ""}>
-                                                    ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
+                                                    Rs.{typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
                                                 </span>
                                             </div>
                                         </td>
@@ -223,24 +256,6 @@ export default function ProductsPage() {
                                             )}>
                                                 {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end space-x-2">
-                                                <button
-                                                    onClick={() => handleEdit(product._id)}
-                                                    className="p-2 text-muted-foreground hover:text-primary transition-colors hover:bg-primary/10 rounded-md"
-                                                    title="Edit Product"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(product._id)}
-                                                    className="p-2 text-muted-foreground hover:text-destructive transition-colors hover:bg-destructive/10 rounded-md"
-                                                    title="Delete Product"
-                                                >
-                                                    <Trash className="h-4 w-4" />
-                                                </button>
-                                            </div>
                                         </td>
                                     </tr>
                                 ))

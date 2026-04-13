@@ -26,10 +26,8 @@ const navigation = [
     { name: "Categories", href: "/categories", icon: Tags },
     { name: "Orders", href: "/orders", icon: ShoppingBag },
     { name: "Customers", href: "/customers", icon: Users },
-    { name: "Drivers", href: "/drivers", icon: Truck },
     { name: "Reviews", href: "/reviews", icon: Star },
     { name: "Notifications", href: "/notifications", icon: Bell },
-    { name: "Whitelist", href: "/whitelist", icon: ListChecks },
     { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -59,8 +57,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
     return (
         <div className="flex flex-col h-full w-64 bg-card border-r border-border fixed left-0 top-0 z-40">
             <div className="flex items-center justify-between h-16 px-6 border-b border-border">
-                <span className="text-xl font-bold text-primary">
-                    WCFC Admin
+                <span className="text-lg font-bold text-primary leading-tight">
+                    The Supplement Solutions
                 </span>
                 {(process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_DANGER_ZONE === 'true') && (
                     <span className="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-2 py-1 rounded-full border border-amber-200">

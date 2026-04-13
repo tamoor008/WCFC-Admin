@@ -4,8 +4,13 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "WCFC Admin | E-commerce Dashboard",
-  description: "Premium admin panel for WCFC e-commerce mobile app",
+  title: "The Supplement Solutions Admin | E-commerce Dashboard",
+  description: "Premium admin panel for The Supplement Solutions e-commerce mobile app",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

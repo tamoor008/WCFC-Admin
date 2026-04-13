@@ -142,7 +142,7 @@ export default function OverviewPage() {
   const statCards = [
     {
       name: "Total Revenue",
-      value: `$${statsData?.totalRevenue?.toLocaleString() || '0'}`,
+      value: `Rs.${statsData?.totalRevenue?.toLocaleString() || '0'}`,
       change: rangeLabel,
       trend: "neutral",
       icon: DollarSign,
@@ -305,7 +305,7 @@ export default function OverviewPage() {
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded px-2 py-1 shadow-md whitespace-nowrap z-10 border border-border">
                           <p className="font-semibold">{label}</p>
-                          <p>${day.value.toLocaleString()}</p>
+                          <p>Rs.${day.value.toLocaleString()}</p>
                         </div>
 
                         <div
@@ -346,7 +346,7 @@ export default function OverviewPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold">${order.totalAmount.toFixed(2)}</p>
+                  <p className="text-sm font-bold">Rs.{order.totalAmount.toFixed(2)}</p>
                 </div>
               </div>
             ))}

@@ -107,17 +107,26 @@ export const validateCustomerImage = async (file: File): Promise<ValidationResul
 };
 
 /**
- * Validate banner image (2:1 aspect ratio, exactly 1000x500px)
+ * Validate banner image (min 1000px wide, landscape ratio)
  */
 export const validateBannerImage = async (file: File): Promise<ValidationResult> => {
     try {
         const { width, height } = await getImageDimensions(file);
 
-        // Check exact dimensions
-        if (width !== 1000 || height !== 500) {
+        // Relaxed validation: Allow landscape images with min width 1000px
+        const aspectRatio = width / height;
+        if (width < 1000) {
             return {
                 valid: false,
-                error: `Banner image must be exactly 1000x500px (got ${width}x${height}px)`,
+                error: `Banner image must be at least 1000px wide (got ${width}px)`,
+                dimensions: { width, height }
+            };
+        }
+
+        if (aspectRatio < 1.5 || aspectRatio > 3.0) {
+            return {
+                valid: false,
+                error: `Banner image must have a landscape aspect ratio between 1.5:1 and 3:1 (got ${aspectRatio.toFixed(2)}:1)`,
                 dimensions: { width, height }
             };
         }

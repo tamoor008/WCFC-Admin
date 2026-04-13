@@ -32,6 +32,8 @@ interface Order {
     tax?: number;
     tips?: number;
     status: string;
+    courier?: string;
+    trackingId?: string;
     createdAt: string;
     products?: Array<{
         productId?: {
@@ -72,6 +74,27 @@ export default function OrdersPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalOrders, setTotalOrders] = useState(0);
 
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    const [savingStatus, setSavingStatus] = useState(false);
+
+    const handleUpdateStatus = async (newStatus: string) => {
+        if (!selectedOrder) return;
+        setSavingStatus(true);
+        try {
+            await adminService.updateOrderStatus(selectedOrder._id, newStatus);
+            toast.success("Status updated successfully");
+            // Update local state
+            setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, status: newStatus } : o));
+            setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+        } catch (error: any) {
+            toast.error(error.userMessage || "Failed to update status");
+        } finally {
+            setSavingStatus(false);
+        }
+    };
+
     useEffect(() => {
         const fetchOrders = async () => {
             setLoading(true);
@@ -105,49 +128,6 @@ export default function OrdersPage() {
                 return "bg-red-500/10 text-red-600 border-red-500/20";
             default:
                 return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-        }
-    };
-
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-    const [assignOrderId, setAssignOrderId] = useState<string | null>(null);
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [drivers, setDrivers] = useState<{ _id: string, name: string, email: string }[]>([]);
-    const [fetchingDrivers, setFetchingDrivers] = useState(false);
-    const [assigning, setAssigning] = useState(false);
-
-    useEffect(() => {
-        if (assignOrderId) {
-            const fetchDrivers = async () => {
-                setFetchingDrivers(true);
-                try {
-                    // Fetch drivers
-                    const res = await adminService.getDrivers();
-                    // Assuming API returns array of users or { users: [] }
-                    setDrivers(Array.isArray(res.data) ? res.data : res.data.users || []);
-                } catch (e) {
-                    console.error("Failed to fetch drivers", e);
-                    toast.error("Failed to load drivers");
-                } finally {
-                    setFetchingDrivers(false);
-                }
-            };
-            fetchDrivers();
-        }
-    }, [assignOrderId]);
-
-    const handleAssignDriver = async (orderId: string, driverId: string) => {
-        try {
-            setAssigning(true);
-            await adminService.assignDriver(orderId, driverId);
-            toast.success("Driver assigned successfully");
-            setAssignOrderId(null);
-            // Refresh orders
-            const response = await adminService.getOrders({ page, limit: 10, search });
-            setOrders(response.data.orders || []);
-        } catch (e: any) {
-            toast.error(e?.response?.data?.error || "Failed to assign driver");
-        } finally {
-            setAssigning(false);
         }
     };
 
@@ -223,6 +203,34 @@ export default function OrdersPage() {
                                 </div>
                             </div>
 
+                            {/* Status Management section */}
+                            <div className="space-y-3 bg-primary/5 p-4 rounded-xl border border-primary/20">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-primary uppercase tracking-wider flex items-center gap-2">
+                                        <Loader2 className={cn("h-4 w-4", savingStatus && "animate-spin")} /> Order Status
+                                    </h4>
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                                        getStatusColor(selectedOrder.status)
+                                    )}>
+                                        Current: {selectedOrder.status}
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <select 
+                                        value={selectedOrder.status.toLowerCase()}
+                                        onChange={(e) => handleUpdateStatus(e.target.value)}
+                                        disabled={savingStatus}
+                                        className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
+                                    >
+                                        <option value="pending">Pending</option>
+                                        <option value="in-transit">In-Transit</option>
+                                        <option value="delivered">Delivered</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             {/* Order Items */}
                             <div className="space-y-3">
                                 <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -259,7 +267,7 @@ export default function OrdersPage() {
                                                         </td>
                                                         <td className="px-4 py-3 text-center">{item.quantity}</td>
                                                         <td className="px-4 py-3 text-right">
-                                                            ${(
+                                                            Rs.{(
                                                                 item.price ||
                                                                 item.variantPrice ||
                                                                 (typeof item.productId === 'object' && item.productId?.price) ||
@@ -273,25 +281,25 @@ export default function OrdersPage() {
                                         <tfoot className="bg-muted/20 font-medium text-sm">
                                             <tr>
                                                 <td colSpan={2} className="px-4 py-2 text-right text-muted-foreground">Subtotal:</td>
-                                                <td className="px-4 py-2 text-right text-foreground">${(selectedOrder.subtotal || selectedOrder.totalAmount).toFixed(2)}</td>
+                                                <td className="px-4 py-2 text-right text-foreground">Rs.{(selectedOrder.subtotal || selectedOrder.totalAmount).toFixed(2)}</td>
                                             </tr>
                                             <tr>
                                                 <td colSpan={2} className="px-4 py-2 text-right text-muted-foreground">Delivery Fee:</td>
-                                                <td className="px-4 py-2 text-right text-foreground">${(selectedOrder.deliveryFee || 0).toFixed(2)}</td>
+                                                <td className="px-4 py-2 text-right text-foreground">Rs.{(selectedOrder.deliveryFee || 0).toFixed(2)}</td>
                                             </tr>
                                             <tr>
                                                 <td colSpan={2} className="px-4 py-2 text-right text-muted-foreground">Tax:</td>
-                                                <td className="px-4 py-2 text-right text-foreground">${(selectedOrder.tax || 0).toFixed(2)}</td>
+                                                <td className="px-4 py-2 text-right text-foreground">Rs.{(selectedOrder.tax || 0).toFixed(2)}</td>
                                             </tr>
                                             {selectedOrder.tips && selectedOrder.tips > 0 && (
                                                 <tr>
                                                     <td colSpan={2} className="px-4 py-2 text-right text-muted-foreground">Tips:</td>
-                                                    <td className="px-4 py-2 text-right text-foreground">${selectedOrder.tips.toFixed(2)}</td>
+                                                    <td className="px-4 py-2 text-right text-foreground">Rs.{selectedOrder.tips.toFixed(2)}</td>
                                                 </tr>
                                             )}
                                             <tr className="border-t border-border font-bold text-base">
                                                 <td colSpan={2} className="px-4 py-3 text-right">Total:</td>
-                                                <td className="px-4 py-3 text-right">${selectedOrder.totalAmount.toFixed(2)}</td>
+                                                <td className="px-4 py-3 text-right">Rs.{selectedOrder.totalAmount.toFixed(2)}</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -305,41 +313,6 @@ export default function OrdersPage() {
                             >
                                 Close
                             </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {assignOrderId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-card w-full max-w-md rounded-xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-muted/40">
-                            <h3 className="font-semibold text-lg">Assign Driver</h3>
-                            <button onClick={() => setAssignOrderId(null)} className="text-muted-foreground hover:text-foreground">✕</button>
-                        </div>
-                        <div className="p-4 max-h-[60vh] overflow-y-auto">
-                            {fetchingDrivers ? (
-                                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-                            ) : drivers.length === 0 ? (
-                                <p className="text-center text-muted-foreground p-4">No drivers found.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {drivers.map(driver => (
-                                        <button
-                                            key={driver._id}
-                                            onClick={() => handleAssignDriver(assignOrderId, driver._id)}
-                                            disabled={assigning}
-                                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-muted/50 transition-colors flex items-center justify-between group"
-                                        >
-                                            <div>
-                                                <p className="font-medium text-sm">{driver.name || 'Unknown Driver'}</p>
-                                                <p className="text-xs text-muted-foreground">{driver.email}</p>
-                                            </div>
-                                            {assigning && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                                            {!assigning && <span className="opacity-0 group-hover:opacity-100 text-xs font-semibold text-primary">Assign</span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -360,7 +333,7 @@ export default function OrdersPage() {
                     <div className="flex flex-col gap-2 w-full overflow-x-auto">
                         {/* Filter Buttons */}
                         <div className="flex gap-2 min-w-max pb-2">
-                            {['all', 'pending', 'processing', 'dispatched', 'delivered', 'cancelled'].map((f) => (
+                            {['all', 'pending', 'in-transit', 'delivered', 'cancelled'].map((f) => (
                                 <button
                                     key={f}
                                     onClick={() => {
@@ -393,7 +366,6 @@ export default function OrdersPage() {
                                 <th className="px-6 py-4">Customer</th>
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Driver</th>
                                 <th className="px-6 py-4">Items</th>
                                 <th className="px-6 py-4 text-right">Total</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
@@ -402,7 +374,7 @@ export default function OrdersPage() {
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center">
+                                    <td colSpan={7} className="p-8 text-center">
                                         <div className="flex justify-center items-center space-x-2 text-muted-foreground">
                                             <Loader2 className="h-6 w-6 animate-spin" />
                                             <span>Loading orders...</span>
@@ -411,7 +383,7 @@ export default function OrdersPage() {
                                 </tr>
                             ) : orders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                                         No orders found.
                                     </td>
                                 </tr>
@@ -440,21 +412,6 @@ export default function OrdersPage() {
                                             )}>
                                                 {order.status}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {/* @ts-ignore */}
-                                            {order.assignedDriver ? (
-                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
-                                                    Assigned
-                                                </span>
-                                            ) : (
-                                                <button
-                                                    onClick={() => setAssignOrderId(order._id)}
-                                                    className="text-xs font-medium text-primary hover:underline"
-                                                >
-                                                    Assign Driver
-                                                </button>
-                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground">
                                             <div className="space-y-2">
@@ -489,7 +446,7 @@ export default function OrdersPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium">
-                                            ${typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount}
+                                            Rs.{typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">

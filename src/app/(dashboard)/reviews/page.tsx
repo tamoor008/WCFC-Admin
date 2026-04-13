@@ -111,8 +111,8 @@ export default function ReviewsPage() {
                                         <td className="px-6 py-4 text-muted-foreground">{format(new Date(review.createdAt), 'MMM d, yyyy')}</td>
                                         <td className="px-6 py-4">{getStatusBadge(review.status)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            {review.status === 'pending' && (
-                                                <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end gap-2">
+                                                {review.status !== 'approved' && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(review._id, 'approved')}
                                                         className="p-1 rounded-md bg-green-100 text-green-700 hover:bg-green-200"
@@ -120,6 +120,8 @@ export default function ReviewsPage() {
                                                     >
                                                         <Check size={16} />
                                                     </button>
+                                                )}
+                                                {review.status !== 'rejected' && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(review._id, 'rejected')}
                                                         className="p-1 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
@@ -127,8 +129,8 @@ export default function ReviewsPage() {
                                                     >
                                                         <X size={16} />
                                                     </button>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

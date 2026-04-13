@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.131:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.30.164:5001/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -69,7 +69,7 @@ export const adminService = {
     getStats: (params?: any) => api.get('/admin/stats', { params }),
     getOrders: (params?: any) => api.get('/admin/orders', { params }),
     updateOrderStatus: (id: string, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
-    assignDriver: (id: string, driverId: string) => api.patch(`/admin/orders/${id}/assign`, { driverId }),
+    updateOrderFulfillment: (id: string, data: { courier: string; trackingId: string }) => api.patch(`/admin/orders/${id}/fulfillment`, data),
     // Customers
     getCustomers: (params?: { page?: number; limit?: number; search?: string; status?: string }) => api.get('/admin/customers', { params }),
     getCustomer: (id: string) => api.get(`/admin/customers/${id}`),
@@ -78,8 +78,6 @@ export const adminService = {
     uploadImage: (formData: FormData, type?: 'product' | 'category' | 'customer' | 'banner') => api.post(`/admin/upload-image${type ? `?type=${type}` : ''}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
-    getDrivers: () => api.get('/drivers'),
-    getDriver: (id: string) => api.get(`/drivers/${id}`),
     // Products
     getProducts: (params?: any) => api.get('/products', { params }),
     getProduct: (id: string) => api.get(`/products/${id}`),
@@ -88,31 +86,40 @@ export const adminService = {
     deleteProduct: (id: string) => api.delete(`/products/${id}`),
     // Categories
     getCategories: () => api.get('/categories'),
+    getCategoriesWithProducts: () => api.get('/categories/with-products'),
     getCategory: (id: string) => api.get(`/categories/${id}`),
     createCategory: (categoryData: any) => api.post('/categories', categoryData),
     updateCategory: (id: string, categoryData: any) => api.put(`/categories/${id}`, categoryData),
     deleteCategory: (id: string) => api.delete(`/categories/${id}`),
     // Notifications
     sendNotification: (data: { title: string; body: string; target: string }) => api.post('/notifications/send', data),
+    getNotifications: () => api.get('/notifications'),
     sendEmail: (data: { subject: string; message: string; targetGroup?: string; testEmail?: string }) => api.post('/admin/send-email', data),
     // Whitelist (invite-only signup)
-    getWhitelist: (role: 'user' | 'driver' = 'user') => api.get('/admin/whitelist', { params: { role } }),
     addWhitelist: (email: string | string[], role: 'user' | 'driver' = 'user') =>
         Array.isArray(email)
             ? api.post('/admin/whitelist', { emails: email, role })
             : api.post('/admin/whitelist', { email, role }),
     removeWhitelist: (email: string) => api.delete(`/admin/whitelist/${encodeURIComponent(email)}`),
+    getWhitelist: (role: string = 'user') => api.get('/admin/whitelist', { params: { role } }),
     logout: () => api.post('/auth/logout'),
     getProfile: () => api.get('/auth/me'),
     updateProfile: (data: { name?: string }) => api.patch('/auth/me', data),
     getPlatformSettings: () => api.get('/admin/settings'),
-    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string; driverAppStoreLink?: string; driverPlayStoreLink?: string; minOrderAmount?: number; deliveryFee?: number; autoAcceptReviews?: boolean }) => api.put('/admin/settings', data),
+    updatePlatformSettings: (data: { supportEmail?: string; appStoreLink?: string; playStoreLink?: string; minOrderAmount?: number; deliveryFee?: number; freeDeliveryThreshold?: number; autoAcceptReviews?: boolean; saleName?: string; saleEndTime?: string | null; isSaleActive?: boolean }) => api.put('/admin/settings', data),
     // Config
     getAppConfig: () => api.get('/config'),
     updateAppConfig: (key: string, value: any) => api.post('/config', { key, value }),
     // Reviews
     getReviews: () => api.get('/reviews/admin'),
     updateReviewStatus: (id: string, status: 'approved' | 'rejected') => api.patch(`/reviews/admin/${id}/status`, { status }),
+    // Shopify
+    syncShopify: () => api.get('/products/sync'),
+    getShopifyCollections: () => api.get('/shopify/collections'),
+    getShopifyStatus: () => api.get('/shopify/status'),
+    // Drivers
+    getDrivers: (params?: any) => api.get('/admin/drivers', { params }),
+    getDriver: (id: string) => api.get(`/admin/drivers/${id}`),
     // Danger Zone
     emptyDevEnvironment: () => api.post('/admin/danger/empty-dev'),
 };

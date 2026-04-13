@@ -197,18 +197,6 @@ export default function CustomerDetailPage() {
                     >
                         {customer.isBlocked ? "Blocked" : "Active"}
                     </span>
-                    {customer.joinedVia && (
-                        <span
-                            className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border",
-                                customer.joinedVia === "whitelist"
-                                    ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-                                    : "bg-violet-500/10 text-violet-600 border-violet-500/20"
-                            )}
-                        >
-                            {customer.joinedVia === "whitelist" ? "Whitelist" : "Referral"}
-                        </span>
-                    )}
                     <button
                         onClick={handleBlockToggle}
                         disabled={blocking}
@@ -231,7 +219,7 @@ export default function CustomerDetailPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Profile & contact */}
                 <div className="bg-card border border-border rounded-xl p-6 space-y-6">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -247,6 +235,10 @@ export default function CustomerDetailPage() {
                                     {customer.email}
                                 </a>
                             </dd>
+                        </div>
+                        <div>
+                            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Display ID</dt>
+                            <dd className="text-sm font-mono">{customer.displayId || "—"}</dd>
                         </div>
                         {customer.phone && (
                             <div>
@@ -298,37 +290,6 @@ export default function CustomerDetailPage() {
                     </dl>
                 </div>
 
-                {/* Identifiers & referrer */}
-                <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Hash className="h-5 w-5 text-muted-foreground" />
-                        Identifiers & referral
-                    </h2>
-                    <dl className="space-y-4">
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Display ID</dt>
-                            <dd className="text-sm font-mono">{customer.displayId || "—"}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Referral code</dt>
-                            <dd className="text-sm font-mono">{customer.referralCode || "—"}</dd>
-                        </div>
-                        {customer.referrer && (
-                            <div>
-                                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Referred by</dt>
-                                <dd className="text-sm">
-                                    <span className="font-medium">{customer.referrer.name}</span>
-                                    <span className="text-muted-foreground mx-1">·</span>
-                                    <span className="font-mono">{customer.referrer.displayId || customer.referrer._id}</span>
-                                    <br />
-                                    <a href={`mailto:${customer.referrer.email}`} className="text-primary hover:underline text-xs">
-                                        {customer.referrer.email}
-                                    </a>
-                                </dd>
-                            </div>
-                        )}
-                    </dl>
-                </div>
             </div>
 
             {/* Addresses */}
@@ -384,7 +345,7 @@ export default function CustomerDetailPage() {
                         </span>
                         <span className="font-semibold flex items-center gap-1">
                             <CreditCard className="h-4 w-4" />
-                            Total spent: ${customer.totalSpent.toFixed(2)}
+                            Total spent: Rs.{customer.totalSpent.toFixed(2)}
                         </span>
                     </div>
                 </div>
@@ -417,7 +378,7 @@ export default function CustomerDetailPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm font-semibold text-right">
-                                            ${(o.totalAmount || 0).toFixed(2)}
+                                            Rs.{(o.totalAmount || 0).toFixed(2)}
                                         </td>
                                     </tr>
                                 ))}
